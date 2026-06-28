@@ -3,24 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบ GPS ค้นหาตำแหน่งผู้ใช้อัตโนมัติ - โครงงานคณิตศาสตร์</title>
+    <title>ระบบคำนวณและลากเส้นทางไปยังสถานีชาร์จ EV ที่ใกล้ที่สุด</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #map { width: 100%; height: 80vh; }
+        #map { width: 100%; height: 78vh; }
         
-        /* กล่องรายงานสถานะ GPS ด้านล่าง */
+        /* กล่องรายงานผลคณิตศาสตร์ */
         #status-panel {
-            height: 20vh; background: #ffffff; padding: 15px; box-sizing: border-box;
-            border-top: 4px solid #007bff; text-align: center; box-shadow: 0 -3px 10px rgba(0,0,0,0.1);
+            height: 22vh; background: #ffffff; padding: 15px; box-sizing: border-box;
+            border-top: 4px solid #28a745; text-align: center; box-shadow: 0 -3px 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
         }
-        #status-text { font-size: 15px; color: #333; font-weight: 500; line-height: 1.6; }
-        .success-text { color: #28a745; font-weight: bold; }
+        #status-text { font-size: 14px; color: #333; line-height: 1.6; }
+        .success-text { color: #28a745; font-weight: bold; font-size: 15px; }
         .math-text { color: #007bff; font-weight: bold; }
-        
-        /* ทำเอฟเฟกต์หมุด GPS ผู้ใช้ให้กระพริบเหมือนแอปนำทางจริง */
+
+        /* ซ่อนกล่องบอกทางตัวหนังสือข้างๆ แผนที่ เพื่อไม่ให้บังหน้าจอ */
+        .leaflet-routing-container { display: none !important; }
+
+        /* เอฟเฟกต์หมุด GPS ผู้ใช้กระพริบ */
         .user-gps-dot {
             background-color: #007bff; border: 2px solid white; border-radius: 50%;
             box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); animation: pulse 1.5s infinite;
@@ -37,20 +42,20 @@
     <div id="map"></div>
 
     <div id="status-panel">
-        <div id="status-text">🔄 กำลังเรียกใช้งานระบบ GPS เพื่อระบุตำแหน่งปัจจุบันของคุณอัตโนมัติ...</div>
+        <div id="status-text">🔄 กำลังเปิดระบบ GPS และจำลองเส้นทางโครงข่ายคณิตศาสตร์อัตโนมัติ...</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <script>
-        // 1. ตั้งค่าแผนที่เริ่มต้น (จะถูกปรับตำแหน่งใหม่อัตโนมัติเมื่อ GPS ทำงานสำเร็จ)
+        // 1. ตั้งค่าแผนที่ฐานเริ่มต้นที่นครสวรรค์
         var map = L.map('map').setView([15.700, 100.120], 13);
-        
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // ข้อมูลพิกัดสถานีชาร์จรถไฟฟ้า EV ในนครสวรรค์
+        // พิกัดสถานีชาร์จรถไฟฟ้า EV ทั้ง 7 แห่งในนครสวรรค์
         var evStations = [
             { name: "ReverSharger", lat: 15.7099424, lng: 100.1179482 },
             { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426 },
@@ -61,98 +66,86 @@
             { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561 }
         ];
 
-        // ปักหมุดสถานีชาร์จทั้งหมดลงบนแผนที่
+        // ปักหมุดสถานีชาร์จทั้งหมดเตรียมไว้บนแผนที่
         evStations.forEach(function(station) {
             L.marker([station.lat, station.lng]).addTo(map)
              .bindPopup("<b>🔌 สถานีชาร์จ EV: " + station.name + "</b>");
         });
 
-        // ============================================
-        // 2. ระบบเรียกใช้ GPS อัตโนมัติทันทีที่เปิดหน้าเว็บ
-        // ============================================
+        var routingControl = null;
+        var userMarker = null;
+
+        // 2. เรียกใช้ระบบสแกน GPS พิกัดปัจจุบันทันทีที่เปิดหน้าเว็บ
         window.onload = function() {
             if (navigator.geolocation) {
-                // คำสั่งเฝ้าติดตามตำแหน่งจริงแบบ Real-time (เคลื่อนที่แล้วหมุดขยับตามเหมือนแอป GPS)
-                navigator.geolocation.watchPosition(updateUserLocation, handleGPSError, {
-                    enableHighAccuracy: true, // เปิดโหมดความแม่นยำสูง
-                    timeout: 10000
+                navigator.geolocation.getCurrentPosition(initRouting, handleGPSError, {
+                    enableHighAccuracy: true
                 });
             } else {
-                document.getElementById("status-text").innerHTML = "❌ อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับระบบระบบ GPS";
+                document.getElementById("status-text").innerHTML = "❌ อุปกรณ์นี้ไม่รองรับระบบ GPS";
             }
         };
 
-        var userMarker = null;
-        var userCircle = null;
+        // 3. เมื่อระบบดึงพิกัดสำเร็จ จะเริ่มวาดเส้นทางคณิตศาสตร์ทันที
+        function initRouting(position) {
+            var userLat = position.coords.latitude;
+            var userLng = position.coords.longitude;
 
-        // ฟังก์ชันอัปเดตตำแหน่งพิกัดผู้ใช้บนแผนที่อัตโนมัติ
-        function updateUserLocation(position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            var accuracy = position.coords.accuracy; // รัศมีความคลาดเคลื่อน (เมตร)
-
-            // กำหนดไอคอนหมุดสีฟ้ารูปแบบวงกลมกระพริบสำหรับตัวผู้ใช้
-            var gpsIcon = L.divIcon({
-                className: 'user-gps-dot',
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
-            });
-
-            // ถ้ามีหมุดเดิมอยู่บนแผนที่ให้ลบออกก่อนเพื่ออัปเดตจุดใหม่
+            // ปักหมุดสีฟ้าแสดงจุดที่ผู้ใช้อยู่ปัจจุบัน
+            var gpsIcon = L.divIcon({ className: 'user-gps-dot', iconSize: [18, 18], iconAnchor: [9, 9] });
             if (userMarker) { map.removeLayer(userMarker); }
-            if (userCircle) { map.removeLayer(userCircle); }
+            userMarker = L.marker([userLat, userLng], { icon: gpsIcon }).addTo(map)
+                          .bindPopup("<b>📍 พิกัดปัจจุบันของคุณ</b>").openPopup();
 
-            // ปักหมุดตำแหน่งปัจจุบันของผู้ใช้
-            userMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map)
-                          .bindPopup("<b>📍 คุณอยู่ที่นี่</b>").openPopup();
-
-            // วาดวงกลมสีฟ้าจางๆ รอบตัวเพื่อแสดงระยะความแม่นยำของสัญญาณ GPS
-            userCircle = L.circle([lat, lng], {
-                radius: accuracy, color: '#007bff', fillColor: '#007bff', fillOpacity: 0.15, weight: 1
-            }).addTo(map);
-
-            // สั่งให้แผนที่แพนโฟกัสสายตามาที่ตำแหน่งของผู้ใช้ทันที
-            map.setView([lat, lng], 15);
-
-            // 🧮 เรียกฟังก์ชันคณิตศาสตร์คำนวณหาสถานีที่ใกล้ที่สุดต่อทันที
-            calculateNearestEV(lat, lng);
-        }
-
-        // ฟังก์ชันคำนวณโครงงานคณิตศาสตร์ (Haversine Formula)
-        function calculateNearestEV(userLat, userLng) {
+            // 🧮 คำนวณหาสถานีชาร์จที่ใกล้ที่สุดด้วยสูตรทางคณิตศาสตร์
             var closestStation = null;
             var minDistance = Infinity;
 
             evStations.forEach(function(station) {
-                var dLat = (station.lat - userLat) * Math.PI / 180;
-                var dLon = (station.lng - userLng) * Math.PI / 180;
-                var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                        Math.cos(userLat * Math.PI / 180) * Math.cos(station.lat * Math.PI / 180) *
-                        Math.sin(dLon/2) * Math.sin(dLon/2);
-                var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                var distance = 6371 * c; // คำนวณรัศมีโลกออกมาเป็นกิโลเมตร
-
+                var distance = calculateHaversine(userLat, userLng, station.lat, station.lng);
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestStation = station;
                 }
             });
 
-            // แสดงผลลัพธ์บนแผงควบคุมด้านล่างหน้าจอ
+            // 🛣️ สั่งให้ระบบลากเส้นจากจุดผู้ใช้ไปยังสถานีชาร์จที่ใกล้ที่สุดบนโครงข่ายถนนจริง
+            if (routingControl) { map.removeControl(routingControl); }
+            
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(userLat, userLng), // จุดเริ่มต้น (ผู้ใช้)
+                    L.latLng(closestStation.lat, closestStation.lng) // จุดปลายทาง (ตู้ชาร์จที่ใกล้ที่สุด)
+                ],
+                routeWhileDragging: false,
+                addWaypoints: false, // บล็อกไม่ให้ผู้ใช้กดเลื่อนจุดเองเพื่อความเสถียร
+                lineStyle: {
+                    styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }] // ปรับสไตล์เส้นทางสีน้ำเงินหนาๆ ชัดๆ
+                }
+            }).addTo(map);
+
+            // อัปเดตข้อความรายงานผลเชิงวิชาการให้กรรมการดู
             document.getElementById("status-text").innerHTML = 
-                "<span class='success-text'>🛰️ เชื่อมต่อ GPS สำเร็จ!</span> พิกัดปัจจุบันของคุณ: " + userLat.toFixed(5) + ", " + userLng.toFixed(5) + "<br>" +
-                "🧮 <span class='math-text'>ผลลัพธ์โมเดลคณิตศาสตร์:</span> ตู้ชาร์จรถไฟฟ้าที่ใกล้คุณที่สุดคือ <b>" + closestStation.name + 
-                "</b> (ห่างออกไปประมาณ <b>" + minDistance.toFixed(2) + " กม.</b>)";
+                "<span class='success-text'>🛰️ เชื่อมต่อโครงข่ายคณิตศาสตร์สำเร็จ!</span><br>" +
+                "📍 พิกัดปัจจุบันของคุณ: " + userLat.toFixed(5) + ", " + userLng.toFixed(5) + "<br>" +
+                "🧮 <span class='math-text'>การวิเคราะห์ทฤษฎีกราฟ:</span> จุดยอด (Vertex) ตู้ชาร์จรถไฟฟ้าที่ใกล้ที่สุดคือ <b>" + closestStation.name + "</b><br>" +
+                "📏 ระยะทางกระจัดเส้นตรงบนผิวโลกประมาณ: <b>" + minDistance.toFixed(2) + " กม.</b>";
         }
 
-        // ฟังก์ชันจัดการกรณี GPS มีปัญหา
+        // สูตรคณิตศาสตร์ทางภูมิศาสตร์ (Haversine Formula) สำหรับหาจุดที่สั้นที่สุด
+        function calculateHaversine(lat1, lon1, lat2, lon2) {
+            var R = 6371; 
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
         function handleGPSError(error) {
-            var txt = document.getElementById("status-text");
-            if (error.code === error.PERMISSION_DENIED) {
-                txt.innerHTML = "❌ <b>ระบบถูกบล็อก:</b> กรุณานำโค้ดนี้ไปรันบนระบบนอก Google Sites (เช่น GitHub) เพื่อให้สิทธิ์เบราว์เซอร์เข้าถึง GPS ครับ";
-            } else {
-                txt.innerHTML = "❌ ไม่สามารถติดต่อสัญญาณ GPS ได้ในขณะนี้";
-            }
+            document.getElementById("status-text").innerHTML = "❌ ไม่สามารถดึงตำแหน่ง GPS ได้ โปรดตรวจสอบว่าคุณได้กด 'อนุญาต' ให้สิทธิ์เข้าถึงพิกัดตำแหน่งแล้วหรือยังครับ";
         }
     </script>
 </body>
