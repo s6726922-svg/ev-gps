@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบ GPS ค้นหาตำแหน่งผู้ใช้อัตโนมัติ - โครงงานคณิตศาสตร์</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { width: 100%; height: 80vh; }
+        
+        /* กล่องรายงานสถานะ GPS ด้านล่าง */
+        #status-panel {
+            height: 20vh; background: #ffffff; padding: 15px; box-sizing: border-box;
+            border-top: 4px solid #007bff; text-align: center; box-shadow: 0 -3px 10px rgba(0,0,0,0.1);
+        }
+        #status-text { font-size: 15px; color: #333; font-weight: 500; line-height: 1.6; }
+        .success-text { color: #28a745; font-weight: bold; }
+        .math-text { color: #007bff; font-weight: bold; }
+        
+        /* ทำเอฟเฟกต์หมุด GPS ผู้ใช้ให้กระพริบเหมือนแอปนำทางจริง */
+        .user-gps-dot {
+            background-color: #007bff; border: 2px solid white; border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div id="status-panel">
+        <div id="status-text">🔄 กำลังเรียกใช้งานระบบ GPS เพื่อระบุตำแหน่งปัจจุบันของคุณอัตโนมัติ...</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // 1. ตั้งค่าแผนที่เริ่มต้น (จะถูกปรับตำแหน่งใหม่อัตโนมัติเมื่อ GPS ทำงานสำเร็จ)
+        var map = L.map('map').setView([15.700, 100.120], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // ข้อมูลพิกัดสถานีชาร์จรถไฟฟ้า EV ในนครสวรรค์
+        var evStations = [
+            { name: "ReverSharger", lat: 15.7099424, lng: 100.1179482 },
+            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426 },
+            { name: "EA Anywhere 1", lat: 15.6976186, lng: 100.1195736 },
+            { name: "EA Anywhere 2", lat: 15.7309677, lng: 100.1164405 },
+            { name: "EA Anywhere 3", lat: 15.7369174, lng: 100.1187196 },
+            { name: "EA Anywhere 4", lat: 15.7489949, lng: 100.1215241 },
+            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561 }
+        ];
+
+        // ปักหมุดสถานีชาร์จทั้งหมดลงบนแผนที่
+        evStations.forEach(function(station) {
+            L.marker([station.lat, station.lng]).addTo(map)
+             .bindPopup("<b>🔌 สถานีชาร์จ EV: " + station.name + "</b>");
+        });
+
+        // ============================================
+        // 2. ระบบเรียกใช้ GPS อัตโนมัติทันทีที่เปิดหน้าเว็บ
+        // ============================================
+        window.onload = function() {
+            if (navigator.geolocation) {
+                // คำสั่งเฝ้าติดตามตำแหน่งจริงแบบ Real-time (เคลื่อนที่แล้วหมุดขยับตามเหมือนแอป GPS)
+                navigator.geolocation.watchPosition(updateUserLocation, handleGPSError, {
+                    enableHighAccuracy: true, // เปิดโหมดความแม่นยำสูง
+                    timeout: 10000
+                });
+            } else {
+                document.getElementById("status-text").innerHTML = "❌ อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับระบบระบบ GPS";
+            }
+        };
+
+        var userMarker = null;
+        var userCircle = null;
+
+        // ฟังก์ชันอัปเดตตำแหน่งพิกัดผู้ใช้บนแผนที่อัตโนมัติ
+        function updateUserLocation(position) {
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            var accuracy = position.coords.accuracy; // รัศมีความคลาดเคลื่อน (เมตร)
+
+            // กำหนดไอคอนหมุดสีฟ้ารูปแบบวงกลมกระพริบสำหรับตัวผู้ใช้
+            var gpsIcon = L.divIcon({
+                className: 'user-gps-dot',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
+            });
+
+            // ถ้ามีหมุดเดิมอยู่บนแผนที่ให้ลบออกก่อนเพื่ออัปเดตจุดใหม่
+            if (userMarker) { map.removeLayer(userMarker); }
+            if (userCircle) { map.removeLayer(userCircle); }
+
+            // ปักหมุดตำแหน่งปัจจุบันของผู้ใช้
+            userMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map)
+                          .bindPopup("<b>📍 คุณอยู่ที่นี่</b>").openPopup();
+
+            // วาดวงกลมสีฟ้าจางๆ รอบตัวเพื่อแสดงระยะความแม่นยำของสัญญาณ GPS
+            userCircle = L.circle([lat, lng], {
+                radius: accuracy, color: '#007bff', fillColor: '#007bff', fillOpacity: 0.15, weight: 1
+            }).addTo(map);
+
+            // สั่งให้แผนที่แพนโฟกัสสายตามาที่ตำแหน่งของผู้ใช้ทันที
+            map.setView([lat, lng], 15);
+
+            // 🧮 เรียกฟังก์ชันคณิตศาสตร์คำนวณหาสถานีที่ใกล้ที่สุดต่อทันที
+            calculateNearestEV(lat, lng);
+        }
+
+        // ฟังก์ชันคำนวณโครงงานคณิตศาสตร์ (Haversine Formula)
+        function calculateNearestEV(userLat, userLng) {
+            var closestStation = null;
+            var minDistance = Infinity;
+
+            evStations.forEach(function(station) {
+                var dLat = (station.lat - userLat) * Math.PI / 180;
+                var dLon = (station.lng - userLng) * Math.PI / 180;
+                var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(userLat * Math.PI / 180) * Math.cos(station.lat * Math.PI / 180) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+                var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                var distance = 6371 * c; // คำนวณรัศมีโลกออกมาเป็นกิโลเมตร
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestStation = station;
+                }
+            });
+
+            // แสดงผลลัพธ์บนแผงควบคุมด้านล่างหน้าจอ
+            document.getElementById("status-text").innerHTML = 
+                "<span class='success-text'>🛰️ เชื่อมต่อ GPS สำเร็จ!</span> พิกัดปัจจุบันของคุณ: " + userLat.toFixed(5) + ", " + userLng.toFixed(5) + "<br>" +
+                "🧮 <span class='math-text'>ผลลัพธ์โมเดลคณิตศาสตร์:</span> ตู้ชาร์จรถไฟฟ้าที่ใกล้คุณที่สุดคือ <b>" + closestStation.name + 
+                "</b> (ห่างออกไปประมาณ <b>" + minDistance.toFixed(2) + " กม.</b>)";
+        }
+
+        // ฟังก์ชันจัดการกรณี GPS มีปัญหา
+        function handleGPSError(error) {
+            var txt = document.getElementById("status-text");
+            if (error.code === error.PERMISSION_DENIED) {
+                txt.innerHTML = "❌ <b>ระบบถูกบล็อก:</b> กรุณานำโค้ดนี้ไปรันบนระบบนอก Google Sites (เช่น GitHub) เพื่อให้สิทธิ์เบราว์เซอร์เข้าถึง GPS ครับ";
+            } else {
+                txt.innerHTML = "❌ ไม่สามารถติดต่อสัญญาณ GPS ได้ในขณะนี้";
+            }
+        }
+    </script>
+</body>
+</html>
