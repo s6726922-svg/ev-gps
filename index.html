@@ -1,211 +1,267 @@
-<!DOCTYPE html><html lang="th"><head>
+<!DOCTYPE html>
+<html lang="th">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบคำนวณและแนะนำสถานีชาร์จ EV อัจฉริยะ - นครสวรรค์</title>
+    <title>ระบบแผนที่และนำทางสถานีชาร์จ EV นครสวรรค์</title>
 
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     
+    <!-- ฟอนต์และไอคอนสไตล์โมเดิร์น -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; color: #333; }
-        #map { width: 100%; height: 45vh; }
-        
-        .container { padding: 15px; box-sizing: border-box; max-width: 800px; margin: 0 auto; }
-        
-        /* กล่องวิเคราะห์ผลหลัก */
-        .panel {
-            background: #ffffff; padding: 20px; border-radius: 12px;
-            border-top: 5px solid #28a745; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+        * {
+            box-sizing: border-box;
+            font-family: 'Sarabun', sans-serif;
         }
-        h3, h4 { margin-top: 0; color: #2c3e50; }
         
-        /* ข้อมูลรายละเอียดสถานี */
-        .station-detail { background: #f8f9fa; border-left: 4px solid #007bff; padding: 12px; margin: 10px 0; border-radius: 0 8px 8px 0; text-align: left; }
-        .amenity-tag { background: #e2e8f0; color: #4a5568; padding: 3px 8px; border-radius: 15px; font-size: 12px; display: inline-block; margin-right: 5px; }
-        .star-rating { color: #ecc94b; font-size: 16px; font-weight: bold; }
-        
-        /* กล่องคำแนะนำสถานีรอง */
-        .backup-station { background: #fffaf0; border-left: 4px solid #dd6b20; padding: 12px; margin: 10px 0; border-radius: 0 8px 8px 0; text-align: left; }
-
-        /* ส่วนของฟอร์มรีวิวความคิดเห็น */
-        .review-section { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .review-input-group { margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
-        input, select, textarea { padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
-        textarea { width: 100%; box-sizing: border-box; resize: vertical; }
-        button { background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #218838; }
-        
-        .review-list { max-height: 150px; overflow-y: auto; text-align: left; margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-        .review-item { padding: 8px; border-bottom: 1px solid #edf2f7; font-size: 13px; }
-
-        .leaflet-routing-container { display: none !important; }
-        .user-gps-dot {
-            background-color: #007bff; border: 2px solid white; border-radius: 50%;
-            box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); animation: pulse 1.5s infinite;
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f8fafc;
+            display: flex;
+            flex-direction: column; /* จัดเลย์เอาต์เป็นแนวตั้ง */
         }
-        @keyframes pulse {
-            0 { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
-            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+
+        /* 1. ส่วนของแผนที่ด้านบน (สัดส่วน 65% ของหน้าจอ) */
+        #map-container {
+            width: 100%;
+            height: 65vh; 
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-    </style></head><body>
+        #map {
+            width: 100%;
+            height: 100%;
+        }
 
-    <div id="map"></div>
+        /* 2. ส่วนของพื้นที่ปุ่มกดด้านล่าง (สัดส่วน 35% ของหน้าจอ) */
+        #control-container {
+            width: 100%;
+            height: 35vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f8fafc;
+        }
 
-    <div class="container">
-        
-        <div class="panel" id="main-panel">
-            <h3>🛰️ ระบบประมวลผลทางเลือกและจัดสรรโครงข่าย EV</h3>
-            <div id="status-text">🔄 กำลังเชื่อมต่อสัญญาณ GPS และประมวลผลทางคณิตศาสตร์แบบ Real-time...</div>
-        </div>
+        /* กล่องการ์ดดีไซน์กระจกหรูหรา (Glassmorphism) */
+        .action-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px 30px;
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
 
-        <div class="review-section">
-            <h4>✍️ สื่อสารและแบ่งปันข้อมูล (ระบบรีวิวผู้ใช้)</h4>
-            <div class="review-input-group">
-                <input type="text" id="rev-name" placeholder="ชื่อของคุณ" style="flex: 1;">
-                <select id="rev-stars">
-                    <option value="5">⭐⭐⭐⭐⭐ (5 ดาว)</option>
-                    <option value="4">⭐⭐⭐⭐ (4 ดาว)</option>
-                    <option value="3">⭐⭐⭐ (3 ดาว)</option>
-                    <option value="2">⭐⭐ (2 ดาว)</option>
-                    <option value="1">⭐ (1 ดาว)</option>
-                </select>
-            </div>
-            <textarea id="rev-text" rows="2" placeholder="พิมพ์ความคิดเห็นของคุณเกี่ยวกับสถานีชาร์จที่นี่..."></textarea>
-            <button onclick="addReview()">ส่งความคิดเห็น</button>
+        .icon-wrapper {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #007bff, #00c6ff);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            flex-shrink: 0;
+            box-shadow: 0 6px 15px rgba(0, 123, 255, 0.25);
+            position: relative;
+        }
 
-            <div class="review-list" id="reviews-box">
-                <div class="review-item"><b>คุณสมชาย:</b> ตู้ Tesla ชาร์จไวมากครับ แวะกินกาแฟรอแปดนาทีเต็ม ⭐⭐⭐⭐⭐</div>
-                <div class="review-item"><b>คุณวิภา:</b> ปั๊ม ReverSharger สะดวกดีค่ะ มีเซเว่นกับห้องน้ำสะอาด ⭐⭐⭐⭐</div>
-            </div>
-        </div>
+        /* เอฟเฟกต์วงแหวนกระจายรอบไอคอน (Pulse Effect) */
+        .icon-wrapper::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            left: 0;
+            top: 0;
+            animation: pulseRing 2s infinite ease-in-out;
+            opacity: 0;
+        }
 
+        @keyframes pulseRing {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        .text-content {
+            text-align: left;
+            flex-grow: 1;
+        }
+
+        h2 {
+            margin: 0 0 4px;
+            font-size: 16px;
+            color: #1e293b;
+            font-weight: 700;
+        }
+
+        p {
+            margin: 0 0 12px;
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        /* ปุ่มกดดีไซน์พรีเมียม */
+        .btn-modern {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #00c6ff, #007bff);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+            background: linear-gradient(135deg, #00b4db, #0066cc);
+        }
+
+        .btn-modern i {
+            font-size: 15px;
+        }
+
+        /* ตกแต่งป้ายแท็กสิ่งอำนวยความสะดวกใน Popup แผนที่ */
+        .amenity-tag {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 11px;
+            display: inline-block;
+            margin-right: 4px;
+            margin-top: 4px;
+        }
+
+        /* ปรับแต่งหน้าตาให้รองรับมือถือ */
+        @media (max-width: 600px) {
+            .action-card {
+                flex-direction: column;
+                padding: 20px;
+                gap: 10px;
+            }
+            .text-content {
+                text-align: center;
+            }
+            #map-container { height: 60vh; }
+            #control-container { height: 40vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- [ด้านบน] ตัวแสดงผลแผนที่ -->
+    <div id="map-container">
+        <div id="map"></div>
     </div>
 
+    <!-- [ด้านล่าง] การ์ดปุ่มกดเปิดระบบ GPS นำทาง -->
+    <div id="control-container">
+        <div class="action-card">
+            <div class="icon-wrapper">
+                <i class="fa-solid fa-location-crosshairs"></i>
+            </div>
+            <div class="text-content">
+                <h2>ระบบคำนวณระยะทางและนำทาง GPS</h2>
+                <p>กดปุ่มด้านล่างเพื่อเปิดหน้าต่างนำทางเต็มระบบ ร่วมกับการใช้พิกัดปัจจุบันของคุณอย่างแม่นยำ</p>
+                
+                <a href="https://s6726922-svg.github.io/ev-gps/" target="_blank" class="btn-modern">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    เปิดระบบแผนที่นำทางด้วยตำแหน่งของคุณ
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <script>
-        var map = L.map('map').setView([15.700, 100.120], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-        // ฐานข้อมูลสถานีชาร์จตามจริง (อัปเดตพิกัดครบถ้วน 13 จุดตามไฟล์ KML นครสวรรค์)
-        var evStations = [
-            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ"], systemStars: 4.6 },
-            { name: "MG Super Charge Charging Station", lat: 15.700614, lng: 100.1210426, slots: 2, type: "กระแสตรง (DC Fast Charge 50 kW)", amenities: ["ห้องน้ำ", "จุดพักรถ"], systemStars: 4.1 },
-            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "กระแสสลับ (AC Normal Charge 22 kW)", amenities: ["ห้องน้ำ", "ร้านอาหาร"], systemStars: 3.9 },
-            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "กระแสตรง (DC Fast Charge 150 kW)", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ Amazon"], systemStars: 4.7 },
-            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "กระแสตรง (DC Fast Charge 150 kW)", amenities: ["ห้องน้ำ", "ร้านค้าปลีก"], systemStars: 4.3 },
-            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "กระแสตรง (DC Fast Charge 150 kW)", amenities: ["7-Eleven", "ห้องน้ำขนาดใหญ่", "ร้านกาแฟ"], systemStars: 4.8 },
-            { name: "Tesla Supercharger นครสวรรค์", lat: 15.711412, lng: 100.0561, slots: 4, type: "กระแสตรง (DC Supercharger 250 kW)", amenities: ["ห้างสรรพสินค้า V-Square", "ห้องน้ำห้าง", "Starbucks", "ร้านอาหารครบครัน"], systemStars: 4.9 },
-            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["ปั๊มน้ำมัน", "ห้องน้ำ", "ร้านสะดวกซื้อ"], systemStars: 4.4 },
-            { name: "Altervim Charging Station", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "กระแสตรง (DC Fast Charge 90 kW)", amenities: ["ห้องน้ำ", "ร้านกาแฟ", "จุดบริการด่วน"], systemStars: 4.2 },
-            { name: "Spark Charging Station", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟอินทนิล"], systemStars: 4.5 },
-            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["สำนักงาน PEA", "ห้องน้ำ", "ที่จอดรถสะดวก"], systemStars: 4.3 },
-            { name: "PTT Station Charging (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["ปั๊ม PTT ใหญ่", "7-Eleven", "ห้องน้ำ", "Café Amazon"], systemStars: 4.6 },
-            { name: "PTT Station Charging (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["ปั๊ม PTT ยุทธศาสตร์", "7-Eleven", "ห้องน้ำสะอาด", "Café Amazon"], systemStars: 4.5 }
-        ];
-
-        // ปักหมุดบนแผนที่พร้อมผูกข้อมูลตามโจทย์อาจารย์
-        evStations.forEach(function(st) {
-            var amHtml = st.amenities.map(a => `<span class='amenity-tag'>📌 ${a}</span>`).join(' ');
-            L.marker([st.lat, st.lng]).addTo(map)
-             .bindPopup(`<b>🔌 สถานี: ${st.name}</b><br>จำนวน: ${st.slots} หัวชาร์จ<br>ระบบ: ${st.type}<br>คะแนนระบบ: ⭐ ${st.systemStars}<br>${amHtml}`);
+        // 1. ตั้งค่าเลเยอร์แผนที่ (ถนนมาตรฐาน และ ภาพดาวเทียม)
+        var osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+            attribution: '© OpenStreetMap contributors' 
+        });
+        
+        var googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { 
+            attribution: '© Google Maps' 
         });
 
-        var routingControl = null;
-        var userMarker = null;
+        // 2. สร้างแผนที่ เริ่มต้นที่ตัวเมืองนครสวรรค์
+        var map = L.map('map', { 
+            center: [15.700, 100.120], 
+            zoom: 13, 
+            layers: [osmStandard] 
+        });
 
-        window.onload = function() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(processEVLogic, function() {
-                    document.getElementById("status-text").innerHTML = "❌ โปรดอนุญาตสิทธิ์เข้าถึง GPS เพื่อคำนวณจุดยอดโครงข่าย";
-                }, { enableHighAccuracy: true });
-            }
+        // 3. เพิ่มปุ่มควบคุมเลเยอร์สลับแผนที่ และมาตราส่วน
+        var baseMaps = { 
+            "🗺️ แผนที่ถนนมาตรฐาน": osmStandard, 
+            "🛰️ ภาพถ่ายดาวเทียม": googleSatellite 
         };
+        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+        L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
 
-        // 🧠 ระบบคำนวณหาลากเส้นทาง และเลือกสถานีหลัก-สถานีรอง
-        function processEVLogic(position) {
-            var userLat = position.coords.latitude;
-            var userLng = position.coords.longitude;
+        // 4. ฐานข้อมูลตำแหน่งสถานีชาร์จ EV
+        var evStations = [
+            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "DC Fast Charge 120 kW", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ"] },
+            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, slots: 2, type: "DC Fast Charge 50 kW", amenities: ["ห้องน้ำ", "จุดพักรถ"] },
+            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "AC Normal Charge 22 kW", amenities: ["ห้องน้ำ", "ร้านอาหาร"] },
+            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "DC Fast Charge 150 kW", amenities: ["7-Eleven", "ห้องน้ำ", "Amazon"] },
+            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC Fast Charge 150 kW", amenities: ["ห้องน้ำ", "ร้านค้า"] },
+            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC Fast Charge 150 kW", amenities: ["7-Eleven", "ห้องน้ำใหญ่"] },
+            { name: "Tesla Supercharger นครสวรรค์", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC Supercharger 250 kW", amenities: ["V-Square", "ห้องน้ำห้าง", "Starbucks"] },
+            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "DC Fast Charge 120 kW", amenities: ["ปั๊มน้ำมัน", "ห้องน้ำ"] },
+            { name: "Altervim Charging Station", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "DC Fast Charge 90 kW", amenities: ["ห้องน้ำ", "ร้านกาแฟ"] },
+            { name: "Spark Charging Station", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "DC Fast Charge 120 kW", amenities: ["7-Eleven", "อินทนิล"] },
+            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "DC Fast Charge 120 kW", amenities: ["สำนักงาน PEA", "ห้องน้ำ"] },
+            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "DC Fast Charge 120 kW", amenities: ["ปั๊ม PTT", "Café Amazon"] },
+            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "DC Fast Charge 120 kW", amenities: ["ปั๊ม PTT ใหญ่", "Café Amazon"] }
+        ];
 
-            var gpsIcon = L.divIcon({ className: 'user-gps-dot', iconSize: [18, 18], iconAnchor: [9, 9] });
-            if (userMarker) { map.removeLayer(userMarker); }
-            userMarker = L.marker([userLat, userLng], { icon: gpsIcon }).addTo(map).bindPopup("<b>📍 ตำแหน่งปัจจุบันของคุณ</b>").openPopup();
-
-            // คำนวณระยะทางและจัดเรียงสถานีตามระยะทางจากน้อยไปมาก
-            var calculatedList = evStations.map(function(station) {
-                var dist = calculateHaversine(userLat, userLng, station.lat, station.lng);
-                return { data: station, distance: dist };
-            });
+        // 5. วนลูปปักหมุดลงบนแผนที่
+        evStations.forEach(function(st) {
+            var amenitiesHtml = st.amenities.map(a => `<span class='amenity-tag'>📌 ${a}</span>`).join(' ');
             
-            // เรียงลำดับคณิตศาสตร์ (Sorting จากใกล้สุดไปไกลสุด)
-            calculatedList.sort((a, b) => a.distance - b.distance);
-
-            var primary = calculatedList[0]; // อันที่ใกล้ที่สุด (ตัวเลือกหลัก)
-            var secondary = calculatedList[1]; // อันที่ใกล้ถัดไป (ตัวเลือกสำรองตามอาจารย์สั่ง)
-
-            // ลากเส้นทางหลักบนแผนที่ถนนจริง
-            if (routingControl) { map.removeControl(routingControl); }
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(userLat, userLng), L.latLng(primary.data.lat, primary.data.lng)],
-                routeWhileDragging: false, addWaypoints: false,
-                lineStyle: { styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }] }
-            }).addTo(map);
-
-            // สร้าง HTML แสดงผลลัพธ์
-            var primaryAmenities = primary.data.amenities.map(a => `<span class='amenity-tag'>🔹 ${a}</span>`).join(' ');
-            var secondaryAmenities = secondary.data.amenities.map(a => `<span class='amenity-tag'>🔸 ${a}</span>`).join(' ');
-
-            var resultHtml = `
-                <p style="color:#28a745; font-weight:bold; margin-bottom:5px;">🛰️ ประมวลผลสำเร็จ (อิงพิกัดผู้ใช้เป็นศูนย์กลางดุลยภาพ):</p>
-                
-                <div class="station-detail">
-                    <strong>🎯 สถานีที่ใกล้ที่สุด (Primary Vertex):</strong> ${primary.data.name}<br>
-                    📏 ระยะทางกระจัด: <b>${primary.distance.toFixed(2)} กม.</b><br>
-                    🔌 ขนาดทรัพยากร: <b>${primary.data.slots} หัวชาร์จ</b> | ระบบไฟฟ้า: <b>${primary.data.type}</b><br>
-                    🏪 สิ่งอำนวยความสะดวก: ${primaryAmenities}<br>
-                    📈 <span class="star-rating">คะแนนคำนวณจากระบบ: ★ ${primary.data.systemStars}</span> (ประเมินจากความเร็วไฟ + ปัจจัยรอบข้าง)
+            L.marker([st.lat, st.lng]).addTo(map)
+             .bindPopup(`
+                <div style="font-family: 'Sarabun', sans-serif; font-size: 13px; line-height: 1.4;">
+                    <b style="font-size: 14px; color: #007bff;">🔌 ${st.name}</b><br>
+                    <b>ประเภท:</b> ${st.type}<br>
+                    <b>จำนวน:</b> ${st.slots} ช่องชาร์จ<br>
+                    <div style="margin-top: 5px;">${amenitiesHtml}</div>
                 </div>
-
-                <div class="backup-station">
-                    <strong>💡 คำแนะนำสำหรับสถานีชาร์จรอง (Alternative Vertex):</strong> ${secondary.data.name}<br>
-                    📏 ระยะทางถัดไป: <b>${secondary.distance.toFixed(2)} กม.</b> (เลือกใช้กรณีสถานีหลักคิวยาว)<br>
-                    🔌 ขนาดทรัพยากร: <b>${secondary.data.slots} หัวชาร์จ</b> | ระบบไฟฟ้า: <b>${secondary.data.type}</b><br>
-                    🏪 สิ่งอำนวยความสะดวก: ${secondaryAmenities}<br>
-                    📈 <span class="star-rating">คะแนนคำนวณจากระบบ: ★ ${secondary.data.systemStars}</span>
-                </div>
-            `;
-            
-            document.getElementById("status-text").innerHTML = resultHtml;
-        }
-
-        function calculateHaversine(lat1, lon1, lat2, lon2) {
-            var R = 6371; 
-            var dLat = (lat2 - lat1) * Math.PI / 180; var dLon = (lon2 - lon1) * Math.PI / 180;
-            var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-        }
-
-        // ฟังก์ชันระบบเพิ่มรีวิวหน้าจอจำลองดึงความสนใจกรรมการ
-        function addReview() {
-            var name = document.getElementById("rev-name").value || "ผู้ใช้ทั่วไป";
-            var starsValue = document.getElementById("rev-stars").value;
-            var text = document.getElementById("rev-text").value;
-            
-            if(!text) { alert("โปรดกรอกข้อความแสดงความคิดเห็นก่อนครับ"); return; }
-            
-            var starString = "⭐".repeat(starsValue);
-            var box = document.getElementById("reviews-box");
-            
-            var newItem = document.createElement("div");
-            newItem.className = "review-item";
-            newItem.innerHTML = `<b>${name}:</b> ${text} <span style='color:#ecc94b;'>${starString}</span>`;
-            
-            box.insertBefore(newItem, box.firstChild);
-            
-            // ล้างฟอร์ม
-            document.getElementById("rev-name").value = "";
-            document.getElementById("rev-text").value = "";
-        }
-    </script></body></html>
+             `);
+        });
+    </script>
+</body>
+</html>
