@@ -40,11 +40,12 @@
             border-radius: 14px; 
             text-align: left; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s;
+            transition: all 0.2s;
+            cursor: pointer;
         }
-        .station-detail:hover, .backup-station:hover { transform: translateY(-2px); }
+        .station-detail:hover, .backup-station:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
         
-        .station-detail { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .station-detail { background: #f0fdf4; border: 2px solid #22c55e; color: #166534; }
         .backup-station { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; }
         
         .amenity-tag { background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.05); color: #475569; padding: 3px 10px; border-radius: 20px; font-size: 11px; display: inline-block; margin: 3px 3px 0 0; font-weight: 500; }
@@ -72,7 +73,6 @@
         input:focus, select:focus, textarea:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
         textarea { width: 100%; box-sizing: border-box; resize: none; }
         
-        /* ปุ่มส่งความคิดเห็นสไตล์โมเดิร์น */
         .btn-submit { 
             background: linear-gradient(135deg, #22c55e, #16a34a); 
             color: white; 
@@ -91,10 +91,8 @@
         .review-list { max-height: 160px; overflow-y: auto; text-align: left; margin-top: 15px; border-top: 1px solid #f1f5f9; padding-top: 12px; }
         .review-item { padding: 10px 6px; border-bottom: 1px solid #f8fafc; font-size: 12px; color: #475569; line-height: 1.5; }
 
-        /* ซ่อนหน้าต่างควบคุมเส้นทางของ Leaflet */
         .leaflet-routing-container { display: none !important; }
         
-        /* หมุดตำแหน่งปัจจุบันของผู้ใช้แบบมีคลื่นเรดาร์ */
         .user-gps-dot {
             background-color: #3b82f6; border: 2px solid white; border-radius: 50%;
             box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); animation: pulse 1.5s infinite;
@@ -105,7 +103,6 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
 
-        /* สถานะกำลังโหลดไฟวิ่งแบบไฮเทค */
         .loading-pulse { font-size: 13px; color: #64748b; text-align: center; padding: 20px 0; }
         .spinner { animation: rotate 2s infinite linear; display: inline-block; margin-right: 6px; }
         @keyframes rotate { 100% { transform: rotate(360deg); } }
@@ -113,12 +110,10 @@
 </head>
 <body>
 
-    <!-- แผนที่ขนาดครึ่งจอส่วนบน -->
     <div id="map"></div>
 
     <div class="container">
         
-        <!-- 1. การ์ดแดชบอร์ดหลัก -->
         <div class="panel" id="main-panel">
             <h3><i class="fa-solid fa-satellite-dish" style="color: #3b82f6; animation: pulse 1.5s infinite;"></i> ระบบจัดสรรโครงข่ายและคำนวณทางเลือก EV</h3>
             <div id="status-text">
@@ -128,7 +123,6 @@
             </div>
         </div>
 
-        <!-- 2. การ์ดระบบสื่อสารและรีวิว -->
         <div class="review-section">
             <h4><i class="fa-regular fa-comment-dots" style="color: #10b981;"></i> สื่อสารและแบ่งปันข้อมูล (ระบบรีวิวผู้ใช้)</h4>
             <div class="review-input-group">
@@ -152,13 +146,11 @@
 
     </div>
 
-    <!-- Leaflet JS & Routing -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <script>
         var map = L.map('map').setView([15.700, 100.120], 13);
-        // ใช้เลเยอร์มินิมอลเพื่อให้เส้นนำทางสีน้ำเงินลอยเด่นขึ้นมาสวยงาม
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' }).addTo(map);
 
         var evStations = [
@@ -177,14 +169,24 @@
             { name: "PTT Station Charging (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["ปั๊ม PTT ยุทธศาสตร์", "7-Eleven", "Café Amazon"], systemStars: 4.5 }
         ];
 
-        evStations.forEach(function(st) {
-            var amHtml = st.amenities.map(a => `<span class='amenity-tag'>📌 ${a}</span>`).join(' ');
-            L.marker([st.lat, st.lng]).addTo(map)
-             .bindPopup(`<b style="color:#0f172a;">🔌 สถานี: ${st.name}</b><br><span style="font-size:12px;color:#475569;">จำนวน: ${st.slots} หัวชาร์จ<br>ระบบ: ${st.type}<br>คะแนน: ⭐ ${st.systemStars}<br>${amHtml}</span>`);
-        });
-
         var routingControl = null;
         var userMarker = null;
+        var userLocation = null; // เก็บพิกัดของผู้ใช้ไว้ลากเส้นซ้ำ
+
+        // ปักหมุดสถานีทั้งหมดลงบนแผนที่
+        evStations.forEach(function(st, index) {
+            var amHtml = st.amenities.map(a => `<span class='amenity-tag'>📌 ${a}</span>`).join(' ');
+            var marker = L.marker([st.lat, st.lng]).addTo(map)
+             .bindPopup(`<b style="color:#0f172a;">🔌 สถานี: ${st.name}</b><br><span style="font-size:12px;color:#475569;">จำนวน: ${st.slots} หัวชาร์จ<br>ระบบ: ${st.type}<br>คะแนน: ⭐ ${st.systemStars}<br>${amHtml}</span>`);
+            
+            // 🔥 ฟังก์ชันเด็ด: เมื่อกดคลิกที่หมุดใดๆ บนแผนที่ ให้ลากเส้นทางใหม่ทันที
+            marker.on('click', function() {
+                if (userLocation) {
+                    drawRoute(userLocation.lat, userLocation.lng, st.lat, st.lng);
+                    highlightStationCard(index); // ไฮไลท์กรอบความเข้มที่การ์ดข้อมูลด้านล่าง (ถ้ามี)
+                }
+            });
+        });
 
         window.onload = function() {
             if (navigator.geolocation) {
@@ -194,17 +196,30 @@
             }
         };
 
+        // ฟังก์ชันสำหรับสั่งลากเส้นทางนำทางสีฟ้า
+        function drawRoute(startLat, startLng, endLat, endLng) {
+            if (routingControl) { map.removeControl(routingControl); }
+            routingControl = L.Routing.control({
+                waypoints: [L.latLng(startLat, startLng), L.latLng(endLat, endLng)],
+                routeWhileDragging: false, 
+                addWaypoints: false,
+                lineStyle: { styles: [{ color: '#3b82f6', opacity: 0.8, weight: 6 }] }
+            }).addTo(map);
+        }
+
         function processEVLogic(position) {
             var userLat = position.coords.latitude;
             var userLng = position.coords.longitude;
+            userLocation = { lat: userLat, lng: userLng }; // บันทึกพิกัดผู้ใช้เก็บไว้
 
             var gpsIcon = L.divIcon({ className: 'user-gps-dot', iconSize: [16, 18], iconAnchor: [8, 9] });
             if (userMarker) { map.removeLayer(userMarker); }
             userMarker = L.marker([userLat, userLng], { icon: gpsIcon }).addTo(map).bindPopup("<b>📍 ตำแหน่งปัจจุบันของคุณ</b>").openPopup();
 
-            var calculatedList = evStations.map(function(station) {
+            // ค้นหาดุลยภาพความต่างพิกัด
+            var calculatedList = evStations.map(function(station, index) {
                 var dist = calculateHaversine(userLat, userLng, station.lat, station.lng);
-                return { data: station, distance: dist };
+                return { data: station, distance: dist, originalIndex: index };
             });
             
             calculatedList.sort((a, b) => a.distance - b.distance);
@@ -212,21 +227,17 @@
             var primary = calculatedList[0];
             var secondary = calculatedList[1];
 
-            if (routingControl) { map.removeControl(routingControl); }
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(userLat, userLng), L.latLng(primary.data.lat, primary.data.lng)],
-                routeWhileDragging: false, addWaypoints: false,
-                lineStyle: { styles: [{ color: '#3b82f6', opacity: 0.8, weight: 6 }] }
-            }).addTo(map);
+            // ครั้งแรกที่เปิดหน้าเว็บบรรเลงลากเส้นไปหาจุดใกล้สุดทันที
+            drawRoute(userLat, userLng, primary.data.lat, primary.data.lng);
 
             var primaryAmenities = primary.data.amenities.map(a => `<span class='amenity-tag'>${a}</span>`).join(' ');
             var secondaryAmenities = secondary.data.amenities.map(a => `<span class='amenity-tag'>${a}</span>`).join(' ');
 
             var resultHtml = `
                 <div style="font-size: 13px; line-height: 1.6; color:#334155;">
-                    <p style="color:#16a34a; font-weight:700; margin: 0 0 12px 0; font-size:14px;"><i class="fa-solid fa-circle-check"></i> ประมวลผลดุลยภาพพิกัดสำเร็จ:</p>
+                    <p style="color:#16a34a; font-weight:700; margin: 0 0 12px 0; font-size:14px;"><i class="fa-solid fa-circle-check"></i> ประมวลผลดุลยภาพพิกัดสำเร็จ (คลิกที่กล่องการ์ดหรือหมุดเพื่อเปลี่ยนเส้นทาง):</p>
                     
-                    <div class="station-detail">
+                    <div class="station-detail" id="card-${primary.originalIndex}" onclick="changeRouteViaCard(${primary.data.lat}, ${primary.data.lng}, ${primary.originalIndex})">
                         <strong style="font-size:14px; display:block; margin-bottom:4px;"><i class="fa-solid fa-star" style="color:#22c55e;"></i> สถานีหลักที่ใกล้ที่สุด (Primary):</strong>
                         <span style="font-size:15px; font-weight:700; color:#0f172a; display:block; margin-bottom:4px;">${primary.data.name}</span>
                         📍 ระยะทางกระจัด: <b>${primary.distance.toFixed(2)} กม.</b><br>
@@ -235,7 +246,7 @@
                         <span class="star-rating"><i class="fa-solid fa-calculator"></i> คะแนนระบบ: ${primary.data.systemStars} / 5.0</span>
                     </div>
 
-                    <div class="backup-station">
+                    <div class="backup-station" id="card-${secondary.originalIndex}" onclick="changeRouteViaCard(${secondary.data.lat}, ${secondary.data.lng}, ${secondary.originalIndex})">
                         <strong style="font-size:14px; display:block; margin-bottom:4px;"><i class="fa-solid fa-shield-halved" style="color:#ea580c;"></i> สถานีสำรองแนะนำ (Alternative):</strong>
                         <span style="font-size:15px; font-weight:700; color:#0f172a; display:block; margin-bottom:4px;">${secondary.data.name}</span>
                         📍 ระยะทางถัดไป: <b>${secondary.distance.toFixed(2)} กม.</b> (กรณีสถานีหลักไม่ว่าง)<br>
@@ -247,6 +258,30 @@
             `;
             
             document.getElementById("status-text").innerHTML = resultHtml;
+            highlightStationCard(primary.originalIndex);
+        }
+
+        // กดลากเส้นใหม่ผ่านการคลิกกล่องข้อมูลการ์ดด้านล่าง
+        function changeRouteViaCard(destLat, destLng, index) {
+            if (userLocation) {
+                drawRoute(userLocation.lat, userLocation.lng, destLat, destLng);
+                highlightStationCard(index);
+                // เลื่อนแผนที่ไปโฟกัสจุดนั้น
+                map.panTo(new L.LatLng(destLat, destLng));
+            }
+        }
+
+        // จัดการเปลี่ยนเส้นหนา-บางของกล่องสถานีให้สอดคล้องกับเส้นทางปัจจุบัน
+        function highlightStationCard(activeIndex) {
+            document.querySelectorAll('.station-detail, .backup-station').forEach(el => {
+                el.style.borderWidth = "1px";
+                el.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05)";
+            });
+            var activeCard = document.getElementById(`card-${activeIndex}`);
+            if (activeCard) {
+                activeCard.style.borderWidth = "3px";
+                activeCard.style.boxShadow = "0 10px 15px -3px rgba(59, 130, 246, 0.2)";
+            }
         }
 
         function calculateHaversine(lat1, lon1, lat2, lon2) {
@@ -277,150 +312,3 @@
         }
     </script>
 </body>
-</html>                <input type="text" id="rev-name" placeholder="ชื่อของคุณ" style="flex: 1;">
-                <select id="rev-stars">
-                    <option value="5">⭐⭐⭐⭐⭐ (5 ดาว)</option>
-                    <option value="4">⭐⭐⭐⭐ (4 ดาว)</option>
-                    <option value="3">⭐⭐⭐ (3 ดาว)</option>
-                    <option value="2">⭐⭐ (2 ดาว)</option>
-                    <option value="1">⭐ (1 ดาว)</option>
-                </select>
-            </div>
-            <textarea id="rev-text" rows="2" placeholder="พิมพ์ความคิดเห็นของคุณเกี่ยวกับสถานีชาร์จที่นี่..."></textarea>
-            <button onclick="addReview()">ส่งความคิดเห็น</button>
-
-            <div class="review-list" id="reviews-box">
-                <div class="review-item"><b>คุณสมชาย:</b> ตู้ Tesla ชาร์จไวมากครับ แวะกินกาแฟรอแปดนาทีเต็ม ⭐⭐⭐⭐⭐</div>
-                <div class="review-item"><b>คุณวิภา:</b> ปั๊ม ReverSharger สะดวกดีค่ะ มีเซเว่นกับห้องน้ำสะอาด ⭐⭐⭐⭐</div>
-            </div>
-        </div>
-
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
-    <script>
-        var map = L.map('map').setView([15.700, 100.120], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-        // ฐานข้อมูลสถานีชาร์จตามจริง (อัปเดตพิกัดครบถ้วน 13 จุดตามไฟล์ KML นครสวรรค์)
-        var evStations = [
-            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ"], systemStars: 4.6 },
-            { name: "MG Super Charge Charging Station", lat: 15.700614, lng: 100.1210426, slots: 2, type: "กระแสตรง (DC Fast Charge 50 kW)", amenities: ["ห้องน้ำ", "จุดพักรถ"], systemStars: 4.1 },
-            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "กระแสสลับ (AC Normal Charge 22 kW)", amenities: ["ห้องน้ำ", "ร้านอาหาร"], systemStars: 3.9 },
-            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "กระแสตรง (DC Fast Charge 150 kW)", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ Amazon"], systemStars: 4.7 },
-            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "กระแสตรง (DC Fast Charge 150 kW)", amenities: ["ห้องน้ำ", "ร้านค้าปลีก"], systemStars: 4.3 },
-            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "กระแสตรง (DC Fast Charge 150 kW)", amenities: ["7-Eleven", "ห้องน้ำขนาดใหญ่", "ร้านกาแฟ"], systemStars: 4.8 },
-            { name: "Tesla Supercharger นครสวรรค์", lat: 15.711412, lng: 100.0561, slots: 4, type: "กระแสตรง (DC Supercharger 250 kW)", amenities: ["ห้างสรรพสินค้า V-Square", "ห้องน้ำห้าง", "Starbucks", "ร้านอาหารครบครัน"], systemStars: 4.9 },
-            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["ปั๊มน้ำมัน", "ห้องน้ำ", "ร้านสะดวกซื้อ"], systemStars: 4.4 },
-            { name: "Altervim Charging Station", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "กระแสตรง (DC Fast Charge 90 kW)", amenities: ["ห้องน้ำ", "ร้านกาแฟ", "จุดบริการด่วน"], systemStars: 4.2 },
-            { name: "Spark Charging Station", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟอินทนิล"], systemStars: 4.5 },
-            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["สำนักงาน PEA", "ห้องน้ำ", "ที่จอดรถสะดวก"], systemStars: 4.3 },
-            { name: "PTT Station Charging (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["ปั๊ม PTT ใหญ่", "7-Eleven", "ห้องน้ำ", "Café Amazon"], systemStars: 4.6 },
-            { name: "PTT Station Charging (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "กระแสตรง (DC Fast Charge 120 kW)", amenities: ["ปั๊ม PTT ยุทธศาสตร์", "7-Eleven", "ห้องน้ำสะอาด", "Café Amazon"], systemStars: 4.5 }
-        ];
-
-        // ปักหมุดบนแผนที่พร้อมผูกข้อมูลตามโจทย์อาจารย์
-        evStations.forEach(function(st) {
-            var amHtml = st.amenities.map(a => `<span class='amenity-tag'>📌 ${a}</span>`).join(' ');
-            L.marker([st.lat, st.lng]).addTo(map)
-             .bindPopup(`<b>🔌 สถานี: ${st.name}</b><br>จำนวน: ${st.slots} หัวชาร์จ<br>ระบบ: ${st.type}<br>คะแนนระบบ: ⭐ ${st.systemStars}<br>${amHtml}`);
-        });
-
-        var routingControl = null;
-        var userMarker = null;
-
-        window.onload = function() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(processEVLogic, function() {
-                    document.getElementById("status-text").innerHTML = "❌ โปรดอนุญาตสิทธิ์เข้าถึง GPS เพื่อคำนวณจุดยอดโครงข่าย";
-                }, { enableHighAccuracy: true });
-            }
-        };
-
-        // 🧠 ระบบคำนวณหาลากเส้นทาง และเลือกสถานีหลัก-สถานีรอง
-        function processEVLogic(position) {
-            var userLat = position.coords.latitude;
-            var userLng = position.coords.longitude;
-
-            var gpsIcon = L.divIcon({ className: 'user-gps-dot', iconSize: [18, 18], iconAnchor: [9, 9] });
-            if (userMarker) { map.removeLayer(userMarker); }
-            userMarker = L.marker([userLat, userLng], { icon: gpsIcon }).addTo(map).bindPopup("<b>📍 ตำแหน่งปัจจุบันของคุณ</b>").openPopup();
-
-            // คำนวณระยะทางและจัดเรียงสถานีตามระยะทางจากน้อยไปมาก
-            var calculatedList = evStations.map(function(station) {
-                var dist = calculateHaversine(userLat, userLng, station.lat, station.lng);
-                return { data: station, distance: dist };
-            });
-            
-            // เรียงลำดับคณิตศาสตร์ (Sorting จากใกล้สุดไปไกลสุด)
-            calculatedList.sort((a, b) => a.distance - b.distance);
-
-            var primary = calculatedList[0]; // อันที่ใกล้ที่สุด (ตัวเลือกหลัก)
-            var secondary = calculatedList[1]; // อันที่ใกล้ถัดไป (ตัวเลือกสำรองตามอาจารย์สั่ง)
-
-            // ลากเส้นทางหลักบนแผนที่ถนนจริง
-            if (routingControl) { map.removeControl(routingControl); }
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(userLat, userLng), L.latLng(primary.data.lat, primary.data.lng)],
-                routeWhileDragging: false, addWaypoints: false,
-                lineStyle: { styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }] }
-            }).addTo(map);
-
-            // สร้าง HTML แสดงผลลัพธ์
-            var primaryAmenities = primary.data.amenities.map(a => `<span class='amenity-tag'>🔹 ${a}</span>`).join(' ');
-            var secondaryAmenities = secondary.data.amenities.map(a => `<span class='amenity-tag'>🔸 ${a}</span>`).join(' ');
-
-            var resultHtml = `
-                <p style="color:#28a745; font-weight:bold; margin-bottom:5px;">🛰️ ประมวลผลสำเร็จ (อิงพิกัดผู้ใช้เป็นศูนย์กลางดุลยภาพ):</p>
-                
-                <div class="station-detail">
-                    <strong>🎯 สถานีที่ใกล้ที่สุด (Primary Vertex):</strong> ${primary.data.name}<br>
-                    📏 ระยะทางกระจัด: <b>${primary.distance.toFixed(2)} กม.</b><br>
-                    🔌 ขนาดทรัพยากร: <b>${primary.data.slots} หัวชาร์จ</b> | ระบบไฟฟ้า: <b>${primary.data.type}</b><br>
-                    🏪 สิ่งอำนวยความสะดวก: ${primaryAmenities}<br>
-                    📈 <span class="star-rating">คะแนนคำนวณจากระบบ: ★ ${primary.data.systemStars}</span> (ประเมินจากความเร็วไฟ + ปัจจัยรอบข้าง)
-                </div>
-
-                <div class="backup-station">
-                    <strong>💡 คำแนะนำสำหรับสถานีชาร์จรอง (Alternative Vertex):</strong> ${secondary.data.name}<br>
-                    📏 ระยะทางถัดไป: <b>${secondary.distance.toFixed(2)} กม.</b> (เลือกใช้กรณีสถานีหลักคิวยาว)<br>
-                    🔌 ขนาดทรัพยากร: <b>${secondary.data.slots} หัวชาร์จ</b> | ระบบไฟฟ้า: <b>${secondary.data.type}</b><br>
-                    🏪 สิ่งอำนวยความสะดวก: ${secondaryAmenities}<br>
-                    📈 <span class="star-rating">คะแนนคำนวณจากระบบ: ★ ${secondary.data.systemStars}</span>
-                </div>
-            `;
-            
-            document.getElementById("status-text").innerHTML = resultHtml;
-        }
-
-        function calculateHaversine(lat1, lon1, lat2, lon2) {
-            var R = 6371; 
-            var dLat = (lat2 - lat1) * Math.PI / 180; var dLon = (lon2 - lon1) * Math.PI / 180;
-            var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-        }
-
-        // ฟังก์ชันระบบเพิ่มรีวิวหน้าจอจำลองดึงความสนใจกรรมการ
-        function addReview() {
-            var name = document.getElementById("rev-name").value || "ผู้ใช้ทั่วไป";
-            var starsValue = document.getElementById("rev-stars").value;
-            var text = document.getElementById("rev-text").value;
-            
-            if(!text) { alert("โปรดกรอกข้อความแสดงความคิดเห็นก่อนครับ"); return; }
-            
-            var starString = "⭐".repeat(starsValue);
-            var box = document.getElementById("reviews-box");
-            
-            var newItem = document.createElement("div");
-            newItem.className = "review-item";
-            newItem.innerHTML = `<b>${name}:</b> ${text} <span style='color:#ecc94b;'>${starString}</span>`;
-            
-            box.insertBefore(newItem, box.firstChild);
-            
-            // ล้างฟอร์ม
-            document.getElementById("rev-name").value = "";
-            document.getElementById("rev-text").value = "";
-        }
-    </script></body></html>
