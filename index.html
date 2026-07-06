@@ -3,66 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบคำนวณทางเลือก EV (Graph-Based)</title>
+    <title>ระบบจัดสรรโครงข่าย EV อัจฉริยะ</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* (สไตล์เดิมของคุณคงไว้) */
-        .review-box { margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 13px; }
-        .review-input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+        body { font-family: 'Sarabun', sans-serif; background: #f1f5f9; margin: 0; padding-bottom: 50px; }
+        #map { width: 100%; height: 40vh; }
+        .container { max-width: 600px; margin: -30px auto 20px; padding: 20px; position: relative; z-index: 1001; }
+        .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .card { background: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; border-left: 5px solid #ccc; }
+        .card-main { border-left-color: #22c55e; background: #f0fdf4; }
+        .card-sub { border-left-color: #f97316; background: #fff7ed; }
+        .amenity { display: inline-block; background: #e2e8f0; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin: 2px; }
+        .btn-nav { display: inline-block; margin-top: 10px; background: #3b82f6; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; }
+        .review-box { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        .input-text { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; }
+        .btn-submit { background: #6366f1; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; width: 100%; }
+        .user-dot { background: #ef4444; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
     </style>
 </head>
 <body>
+
     <div id="map"></div>
+
     <div class="container">
-        <!-- แดชบอร์ดวิเคราะห์ (Graph Theory) -->
         <div class="panel">
-            <h3><i class="fa-solid fa-satellite-dish"></i> ระบบจัดสรรโครงข่ายและคำนวณทางเลือก EV</h3>
-            <div id="graph-metrics"></div>
+            <h3><i class="fa-solid fa-satellite-dish"></i> การวิเคราะห์โครงข่ายสถานี</h3>
+            <div id="graph-analysis" style="font-size: 14px; line-height: 1.6;"></div>
         </div>
 
-        <div id="recommendation-area"></div>
+        <div id="station-list"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // ... (ข้อมูล stations เดิมของคุณ) ...
+        const userPos = [15.89725, 100.30617];
+        const map = L.map('map').setView(userPos, 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+        
+        L.marker(userPos, { icon: L.divIcon({ className: 'user-dot', iconSize: [15, 15] }) }).addTo(map).bindPopup("คุณอยู่ที่นี่");
 
-        function renderStations() {
-            let html = `<h4>สถานีแนะนำตามการวิเคราะห์ทฤษฎีกราฟ</h4>`;
-            stations.slice(0, 2).forEach((s, i) => {
-                let id = "rev-" + i;
-                html += `
-                    <div class="${i === 0 ? 'station-main' : 'station-sub'}">
-                        <b>${i === 0 ? '⚡ สถานีหลัก:' : '📍 สถานีรอง:'} ${s.name}</b>
-                        <p>ระยะทาง: ${(s.dist * 111).toFixed(2)} กม.</p>
-                        
-                        <!-- ช่องรีวิว -->
-                        <div class="review-box">
-                            <input type="text" id="${id}-name" class="review-input" placeholder="ชื่อของคุณ">
-                            <textarea id="${id}-text" class="review-input" placeholder="รีวิวสถานีนี้..."></textarea>
-                            <button onclick="saveReview('${id}', '${s.name}')" style="background:#22c55e; color:white; border:none; padding:5px; border-radius:4px; cursor:pointer;">ส่งรีวิว</button>
-                            <div id="${id}-list"></div>
-                        </div>
-                    </div>`;
-            });
-            document.getElementById('recommendation-area').innerHTML = html;
+        const stations = [
+            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, type: "DC 120 kW", amenities: ["7-Eleven", "ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, type: "DC 150 kW", amenities: ["7-Eleven", "กาแฟ"] },
+            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, type: "DC 250 kW", amenities: ["ห้างสรรพสินค้า"] }
+        ];
+
+        stations.forEach(s => s.dist = Math.sqrt(Math.pow(s.lat - userPos[0], 2) + Math.pow(s.lng - userPos[1], 2)) * 111);
+        stations.sort((a, b) => a.dist - b.dist);
+
+        document.getElementById('graph-analysis').innerHTML = `
+            เชื่อมต่อโครงข่ายคณิตศาสตร์สำเร็จ!<br>
+            พิกัดปัจจุบัน: <b>${userPos[0]}, ${userPos[1]}</b><br>
+            การวิเคราะห์ทฤษฎีกราฟ: Vertex ที่ใกล้ที่สุดคือ <b>${stations[0].name}</b><br>
+            ระยะทางกระจัด: <b>${stations[0].dist.toFixed(2)} กม.</b>
+        `;
+
+        let html = "";
+        stations.slice(0, 2).forEach((s, i) => {
+            let typeClass = (i === 0) ? "card-main" : "card-sub";
+            let title = (i === 0) ? "สถานีหลัก (ใกล้ที่สุด)" : "สถานีรอง";
+            html += `
+                <div class="card ${typeClass}">
+                    <b>${title}: ${s.name}</b><br>
+                    <small>ประเภท: ${s.type} | ระยะทาง: ${s.dist.toFixed(2)} กม.</small><br>
+                    <div>${s.amenities.map(a => `<span class="amenity">${a}</span>`).join('')}</div>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" class="btn-nav"><i class="fa-solid fa-location-arrow"></i> นำทาง</a>
+                    
+                    <div class="review-box">
+                        <input type="text" id="name-${i}" class="input-text" placeholder="ชื่อของคุณ">
+                        <textarea id="text-${i}" class="input-text" placeholder="รีวิวที่นี่..."></textarea>
+                        <button class="btn-submit" onclick="addReview(${i})">ส่งรีวิว</button>
+                        <div id="list-${i}"></div>
+                    </div>
+                </div>`;
+            L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.name);
+        });
+        document.getElementById('station-list').innerHTML = html;
+
+        function addReview(i) {
+            let name = document.getElementById('name-'+i).value;
+            let text = document.getElementById('text-'+i).value;
+            if(name && text) {
+                document.getElementById('list-'+i).innerHTML += `<p style="font-size:12px"><b>${name}</b>: ${text}</p>`;
+                document.getElementById('name-'+i).value = ''; document.getElementById('text-'+i).value = '';
+            }
         }
-
-        function saveReview(id, stationName) {
-            let name = document.getElementById(id + '-name').value;
-            let text = document.getElementById(id + '-text').value;
-            if(!name || !text) return alert("กรุณากรอกข้อมูลให้ครบ");
-            
-            let list = document.getElementById(id + '-list');
-            list.innerHTML += `<p><b>${name}</b>: ${text}</p>`;
-            
-            // เคลียร์ค่า
-            document.getElementById(id + '-name').value = '';
-            document.getElementById(id + '-text').value = '';
-        }
-
-        renderStations();
     </script>
 </body>
 </html>
+
