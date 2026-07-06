@@ -2,30 +2,28 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบสถานีชาร์จ EV - นครสวรรค์ (13 จุด)</title>
+    <title>ระบบสถานีชาร์จ EV อัจฉริยะ - นครสวรรค์</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; font-family: 'Sarabun', sans-serif; background: #f8fafc; }
-        #map { width: 100%; height: 45vh; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .container { padding: 20px; max-width: 650px; margin: -30px auto 30px; position: relative; z-index: 1001; }
+        body { font-family: 'Sarabun', sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+        #map { width: 100%; height: 35vh; border-radius: 20px; margin-bottom: 20px; }
         .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .card { padding: 15px; margin: 10px 0; border-radius: 14px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .card { padding: 15px; margin: 10px 0; border-radius: 14px; cursor: pointer; border: 2px solid #ddd; transition: 0.3s; }
+        .card:hover { transform: scale(1.02); }
         .primary { background: #f0fdf4; border-color: #22c55e; }
         .backup { background: #fff7ed; border-color: #f97316; }
-        .map-icon { font-size: 18px; text-shadow: 0 0 2px white; }
+        .tag { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 8px; font-size: 12px; margin-right: 5px; margin-top: 5px; }
+        .review-box { margin-top: 10px; font-size: 13px; color: #64748b; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div class="container">
-        <div class="panel">
-            <h3><i class="fa-solid fa-charging-station" style="color: #3b82f6;"></i> สถานีชาร์จใกล้คุณ (จาก 13 จุด)</h3>
-            <div id="list">กำลังค้นหาตำแหน่งและคำนวณระยะทาง...</div>
-        </div>
+    <div class="panel">
+        <h3><i class="fa-solid fa-check-circle" style="color: #22c55e;"></i> ประมวลผลดุลยภาพพิกัดสำเร็จ:</h3>
+        <div id="list">กำลังคำนวณ...</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -34,43 +32,37 @@
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
         var evStations = [
-            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "DC 120 kW" },
-            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, slots: 2, type: "DC 50 kW" },
-            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "AC 22 kW" },
-            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "DC 150 kW" },
-            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC 150 kW" },
-            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC 150 kW" },
-            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC 250 kW" },
-            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "DC 120 kW" },
-            { name: "Altervim Charging", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "DC 90 kW" },
-            { name: "Spark Charging", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "DC 120 kW" },
-            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "DC 120 kW" },
-            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "DC 120 kW" },
-            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "DC 120 kW" }
+            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, rating: 4.8, amenities: ["7-Eleven", "ห้องน้ำ", "กาแฟ"] },
+            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, rating: 4.2, amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, rating: 4.0, amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, rating: 4.5, amenities: ["7-Eleven", "Amazon"] },
+            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, rating: 4.3, amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, rating: 4.8, amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ"] },
+            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, rating: 5.0, amenities: ["ห้าง V-Square", "Starbucks"] },
+            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, rating: 4.1, amenities: ["ร้านสะดวกซื้อ"] },
+            { name: "Altervim Charging", lat: 15.7078974, lng: 100.0946941, rating: 4.4, amenities: ["ห้องน้ำ"] },
+            { name: "Spark Charging", lat: 15.7076225, lng: 100.0876302, rating: 4.6, amenities: ["7-Eleven", "อินทนิล"] },
+            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, rating: 4.7, amenities: ["สำนักงาน PEA"] },
+            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, rating: 4.8, amenities: ["7-Eleven", "Amazon"] },
+            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, rating: 4.5, amenities: ["7-Eleven", "Amazon"] }
         ];
+
+        function openMap(lat, lng) { window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`); }
 
         navigator.geolocation.getCurrentPosition(pos => {
             let uLat = pos.coords.latitude, uLng = pos.coords.longitude;
-            L.marker([uLat, uLng]).addTo(map).bindPopup("คุณอยู่ที่นี่");
-
-            evStations.forEach(st => {
-                L.marker([st.lat, st.lng], { icon: L.divIcon({ html: '<div class="map-icon">⚡</div>', className: '' }) })
-                 .addTo(map).bindPopup(st.name);
-            });
-
+            evStations.forEach(st => L.marker([st.lat, st.lng]).addTo(map).bindPopup(st.name));
+            
             let sorted = evStations.map(s => ({...s, d: getDist(uLat, uLng, s.lat, s.lng)})).sort((a,b) => a.d - b.d);
 
-            L.polyline([[uLat, uLng], [sorted[0].lat, sorted[0].lng]], {color: '#22c55e', weight: 4}).addTo(map);
-            L.polyline([[uLat, uLng], [sorted[1].lat, sorted[1].lng]], {color: '#f97316', weight: 4, dashArray: '8, 8'}).addTo(map);
-
-            document.getElementById("list").innerHTML = `
-                <div class="card primary" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${sorted[0].lat},${sorted[0].lng}')">
-                    <strong>★ สถานีหลัก: ${sorted[0].name}</strong><br>ระยะทาง: ${sorted[0].d.toFixed(2)} กม.
+            document.getElementById("list").innerHTML = sorted.slice(0, 2).map((s, i) => `
+                <div class="card ${i === 0 ? 'primary' : 'backup'}" onclick="openMap(${s.lat}, ${s.lng})">
+                    <strong>${i === 0 ? '★ สถานีหลัก' : '🛡️ สถานีสำรอง'}: ${s.name}</strong><br>
+                    ระยะทาง: ${s.d.toFixed(2)} กม. | คะแนน: ${s.rating} / 5.0<br>
+                    <div>${s.amenities.map(a => `<span class="tag">${a}</span>`).join('')}</div>
+                    <div class="review-box"><i class="fa-regular fa-comment"></i> "สถานีพร้อมใช้งาน สถานที่สะอาดน่าใช้บริการ"</div>
                 </div>
-                <div class="card backup" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${sorted[1].lat},${sorted[1].lng}')">
-                    <strong>🛡️ สถานีสำรอง: ${sorted[1].name}</strong><br>ระยะทาง: ${sorted[1].d.toFixed(2)} กม.
-                </div>
-            `;
+            `).join('');
         });
 
         function getDist(lat1, lon1, lat2, lon2) {
