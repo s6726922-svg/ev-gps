@@ -3,81 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบสถานีชาร์จ EV อัจฉริยะ (13 จุด) - นครสวรรค์</title>
+    <title>ระบบสถานีชาร์จ EV - นครสวรรค์ (13 จุด)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; font-family: 'Sarabun', sans-serif; }
-        body { margin: 0; background-color: #f8fafc; }
-        #map { width: 100%; height: 45vh; }
+        body { margin: 0; font-family: 'Sarabun', sans-serif; background: #f8fafc; }
+        #map { width: 100%; height: 45vh; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .container { padding: 20px; max-width: 650px; margin: -30px auto 30px; position: relative; z-index: 1001; }
-        .panel { background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .card { padding: 15px; margin: 10px 0; border-radius: 12px; cursor: pointer; }
-        .primary { background: #f0fdf4; border: 2px solid #22c55e; }
-        .backup { background: #fff7ed; border: 2px solid #f97316; }
+        .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .card { padding: 15px; margin: 10px 0; border-radius: 14px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .primary { background: #f0fdf4; border-color: #22c55e; }
+        .backup { background: #fff7ed; border-color: #f97316; }
+        .map-icon { font-size: 18px; text-shadow: 0 0 2px white; }
     </style>
 </head>
 <body>
 
-<div id="map"></div>
-<div class="container">
-    <div class="panel">
-        <h3>สถานีชาร์จ EV (รวม 13 แห่ง)</h3>
-        <div id="list">กำลังประมวลผล...</div>
+    <div id="map"></div>
+    <div class="container">
+        <div class="panel">
+            <h3><i class="fa-solid fa-charging-station" style="color: #3b82f6;"></i> สถานีชาร์จใกล้คุณ (จาก 13 จุด)</h3>
+            <div id="list">กำลังค้นหาตำแหน่งและคำนวณระยะทาง...</div>
+        </div>
     </div>
-</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    var map = L.map('map').setView([15.700, 100.120], 12);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([15.700, 100.120], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // ข้อมูลสถานี 13 จุด
-    var evStations = [
-        { name: "ReverSharger (ส.อรุณ)", lat: 15.7099, lng: 100.1179 },
-        { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976, lng: 100.1195 },
-        { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309, lng: 100.1164 },
-        { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369, lng: 100.1187 },
-        { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489, lng: 100.1215 },
-        { name: "Tesla Supercharger", lat: 15.7114, lng: 100.0561 },
-        { name: "PEA VOLTA นครสวรรค์", lat: 15.7096, lng: 100.1154 },
-        { name: "MG Super Charge", lat: 15.7006, lng: 100.1210 },
-        { name: "สถานีเสริม 1", lat: 15.6850, lng: 100.1300 },
-        { name: "สถานีเสริม 2", lat: 15.7200, lng: 100.1400 },
-        { name: "สถานีเสริม 3", lat: 15.7500, lng: 100.1000 },
-        { name: "สถานีเสริม 4", lat: 15.7150, lng: 100.0900 },
-        { name: "สถานีเสริม 5", lat: 15.7050, lng: 100.1500 }
-    ];
+        var evStations = [
+            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "DC 120 kW" },
+            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, slots: 2, type: "DC 50 kW" },
+            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "AC 22 kW" },
+            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "DC 150 kW" },
+            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC 150 kW" },
+            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC 150 kW" },
+            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC 250 kW" },
+            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "DC 120 kW" },
+            { name: "Altervim Charging", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "DC 90 kW" },
+            { name: "Spark Charging", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "DC 120 kW" },
+            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "DC 120 kW" },
+            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "DC 120 kW" },
+            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "DC 120 kW" }
+        ];
 
-    navigator.geolocation.getCurrentPosition(pos => {
-        let uLat = pos.coords.latitude, uLng = pos.coords.longitude;
-        L.marker([uLat, uLng]).addTo(map).bindPopup("คุณอยู่ที่นี่");
+        navigator.geolocation.getCurrentPosition(pos => {
+            let uLat = pos.coords.latitude, uLng = pos.coords.longitude;
+            L.marker([uLat, uLng]).addTo(map).bindPopup("คุณอยู่ที่นี่");
 
-        evStations.forEach(st => {
-            L.marker([st.lat, st.lng]).addTo(map).bindPopup(st.name);
+            evStations.forEach(st => {
+                L.marker([st.lat, st.lng], { icon: L.divIcon({ html: '<div class="map-icon">⚡</div>', className: '' }) })
+                 .addTo(map).bindPopup(st.name);
+            });
+
+            let sorted = evStations.map(s => ({...s, d: getDist(uLat, uLng, s.lat, s.lng)})).sort((a,b) => a.d - b.d);
+
+            L.polyline([[uLat, uLng], [sorted[0].lat, sorted[0].lng]], {color: '#22c55e', weight: 4}).addTo(map);
+            L.polyline([[uLat, uLng], [sorted[1].lat, sorted[1].lng]], {color: '#f97316', weight: 4, dashArray: '8, 8'}).addTo(map);
+
+            document.getElementById("list").innerHTML = `
+                <div class="card primary" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${sorted[0].lat},${sorted[0].lng}')">
+                    <strong>★ สถานีหลัก: ${sorted[0].name}</strong><br>ระยะทาง: ${sorted[0].d.toFixed(2)} กม.
+                </div>
+                <div class="card backup" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${sorted[1].lat},${sorted[1].lng}')">
+                    <strong>🛡️ สถานีสำรอง: ${sorted[1].name}</strong><br>ระยะทาง: ${sorted[1].d.toFixed(2)} กม.
+                </div>
+            `;
         });
 
-        let sorted = evStations.map(s => ({...s, d: getDist(uLat, uLng, s.lat, s.lng)})).sort((a,b) => a.d - b.d);
-
-        L.polyline([[uLat, uLng], [sorted[0].lat, sorted[0].lng]], {color: 'green', weight: 4}).addTo(map);
-        L.polyline([[uLat, uLng], [sorted[1].lat, sorted[1].lng]], {color: 'orange', weight: 4, dashArray: '10, 10'}).addTo(map);
-
-        document.getElementById("list").innerHTML = `
-            <div class="card primary" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${sorted[0].lat},${sorted[0].lng}')">
-                <strong>★ สถานีหลัก: ${sorted[0].name}</strong>
-            </div>
-            <div class="card backup" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${sorted[1].lat},${sorted[1].lng}')">
-                <strong>🛡️ สถานีสำรอง: ${sorted[1].name}</strong>
-            </div>
-        `;
-    });
-
-    function getDist(lat1, lon1, lat2, lon2) {
-        let R = 6371;
-        let dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
-        let a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-</script>
+        function getDist(lat1, lon1, lat2, lon2) {
+            let R = 6371;
+            let dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+            let a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+    </script>
 </body>
 </html>
