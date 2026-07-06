@@ -14,14 +14,9 @@
         #map { width: 100%; height: 40vh; }
         .container { padding: 20px; max-width: 650px; margin: -30px auto 30px; position: relative; z-index: 1001; }
         .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .best-station { background: #dcfce7; border: 2px solid #22c55e; padding: 15px; margin-bottom: 15px; border-radius: 12px; }
         .station-item { padding: 15px; margin: 10px 0; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; }
         .btn-nav { display: inline-block; margin-top: 8px; padding: 6px 12px; background: #3b82f6; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; }
-        .btn-nav:hover { background: #2563eb; }
-        .review-section { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        input, textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #cbd5e1; border-radius: 8px; }
-        .btn-submit { background: #22c55e; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; }
-        .user-gps-dot { background: #3b82f6; border-radius: 50%; border: 3px solid white; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } }
     </style>
 </head>
 <body>
@@ -29,23 +24,22 @@
     <div id="map"></div>
 
     <div class="container">
+        <!-- กล่องแนะนำ 2 สถานีใกล้สุด -->
         <div class="panel">
-            <h3><i class="fa-solid fa-charging-station"></i> สถานีชาร์จใกล้คุณ</h3>
-            <div id="station-list"></div>
+            <h3><i class="fa-solid fa-bolt"></i> แนะนำสถานีชาร์จใกล้คุณที่สุด</h3>
+            <div id="top-2-stations"></div>
         </div>
 
-        <div class="review-section">
-            <h4><i class="fa-regular fa-comment-dots"></i> แบ่งปันข้อมูลสถานี</h4>
-            <input type="text" id="rev-name" placeholder="ชื่อของคุณ">
-            <textarea id="rev-text" placeholder="ความคิดเห็น..."></textarea>
-            <button class="btn-submit" onclick="addReview()">ส่งความคิดเห็น</button>
-            <div id="reviews-box" style="margin-top:15px; font-size: 14px;"></div>
+        <div class="panel">
+            <h3><i class="fa-solid fa-list"></i> สถานีทั้งหมด</h3>
+            <div id="station-list"></div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        var map = L.map('map').setView([15.700, 100.120], 12);
+        var userPos = [15.89725, 100.30617];
+        var map = L.map('map').setView(userPos, 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
         var stations = [
@@ -64,29 +58,33 @@
             { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, type: "DC 120 kW" }
         ];
 
+        // คำนวณระยะทาง
+        stations.forEach(s => {
+            s.dist = Math.sqrt(Math.pow(s.lat - userPos[0], 2) + Math.pow(s.lng - userPos[1], 2));
+        });
+
+        // เรียงลำดับจากใกล้ไปไกล
+        stations.sort((a, b) => a.dist - b.dist);
+
+        // แสดง 2 อันแรก
+        let top2HTML = "";
+        for(let i = 0; i < 2; i++) {
+            top2HTML += `<div class="best-station">
+                <b>${i+1}. ${stations[i].name}</b><br>
+                ระยะทางประมาณ: ${(stations[i].dist * 111).toFixed(2)} กม.
+                <br><a href="https://www.google.com/maps/dir/?api=1&destination=${stations[i].lat},${stations[i].lng}" target="_blank" class="btn-nav">นำทาง</a>
+            </div>`;
+        }
+        document.getElementById('top-2-stations').innerHTML = top2HTML;
+
+        // แสดงรายการทั้งหมด
         let listHTML = "";
         stations.forEach(s => {
             L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.name);
-            listHTML += `<div class="station-item">
-                            <b>${s.name}</b><br><small>${s.type}</small><br>
-                            <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" class="btn-nav">
-                                <i class="fa-solid fa-location-arrow"></i> นำทางด้วย Google Maps
-                            </a>
-                         </div>`;
+            listHTML += `<div class="station-item"><b>${s.name}</b><br>${s.type}</div>`;
         });
         document.getElementById('station-list').innerHTML = listHTML;
-
-        L.marker([15.89725, 100.30617], { icon: L.divIcon({ className: 'user-gps-dot', iconSize: [20, 20] }) }).addTo(map).bindPopup("คุณอยู่ที่นี่");
-
-        function addReview() {
-            let name = document.getElementById('rev-name').value;
-            let text = document.getElementById('rev-text').value;
-            if(name && text) {
-                document.getElementById('reviews-box').innerHTML += `<p><b>${name}</b>: ${text}</p>`;
-                document.getElementById('rev-name').value = '';
-                document.getElementById('rev-text').value = '';
-            }
-        }
     </script>
 </body>
 </html>
+
