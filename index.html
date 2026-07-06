@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>ระบบสถานีชาร์จ EV อัจฉริยะ - นครสวรรค์</title>
+    <title>ระบบสถานีชาร์จ EV - นครสวรรค์</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
@@ -11,9 +11,7 @@
         #map { width: 100%; height: 40vh; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .card { padding: 15px; margin: 10px 0; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; }
-        .review-section { margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1; }
-        textarea { width: 100%; height: 50px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px; margin-top: 5px; box-sizing: border-box; }
-        .tag { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 8px; font-size: 11px; margin-right: 5px; }
+        .tag { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 8px; font-size: 11px; margin-right: 5px; margin-top: 5px; }
         .analysis-box { background: #eff6ff; padding: 15px; border-radius: 14px; margin-bottom: 20px; border-left: 5px solid #3b82f6; }
     </style>
 </head>
@@ -23,7 +21,7 @@
     
     <div class="panel">
         <div class="analysis-box" id="analysis">กำลังประมวลผลข้อมูลโครงข่าย...</div>
-        <h3><i class="fa-solid fa-charging-station"></i> รายการสถานีชาร์จทั้งหมด (${evStations.length} แห่ง)</h3>
+        <h3><i class="fa-solid fa-charging-station"></i> รายการสถานีชาร์จทั้งหมด</h3>
         <div id="list"></div>
     </div>
 
@@ -48,25 +46,19 @@
         var map = L.map('map').setView([15.700, 100.120], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // เพิ่มหมุดบนแผนที่ทั้งหมด
         evStations.forEach(st => {
             L.marker([st.lat, st.lng]).addTo(map).bindPopup(`<b>${st.name}</b><br>${st.type} (${st.slots} ช่อง)`);
         });
 
-        // แสดงผลรายการ
         document.getElementById("list").innerHTML = evStations.map(s => `
             <div class="card">
                 <strong>${s.name}</strong><br>
                 <small><i class="fa-solid fa-bolt"></i> ${s.type} | <i class="fa-solid fa-car"></i> ${s.slots} ช่องชาร์จ</small><br>
                 <div>${s.amenities.map(a => `<span class="tag">${a}</span>`).join('')}</div>
-                <div class="review-section">
-                    <label style="font-size: 12px; color: #64748b;">รีวิวสถานีนี้:</label>
-                    <textarea placeholder="เขียนรีวิว..."></textarea>
-                </div>
             </div>
         `).join('');
 
-        document.getElementById("analysis").innerHTML = `<i class="fa-solid fa-check-double"></i> <b>เชื่อมต่อโครงข่ายคณิตศาสตร์สำเร็จ!</b> แสดงผลสถานีชาร์จ EV ในระบบจำนวน ${evStations.length} จุดเรียบร้อยแล้ว`;
+        document.getElementById("analysis").innerHTML = `<i class="fa-solid fa-check-double"></i> <b>เชื่อมต่อโครงข่ายคณิตศาสตร์สำเร็จ!</b> แสดงผลสถานีชาร์จ EV ทั้งหมด ${evStations.length} แห่งบนแผนที่เรียบร้อยแล้ว`;
     </script>
 </body>
 </html>
