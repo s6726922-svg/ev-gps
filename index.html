@@ -3,52 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EV Station Finder - นครสวรรค์</title>
-    <!-- Leaflet CSS -->
+    <title>ระบบคำนวณและแนะนำสถานีชาร์จ EV อัจฉริยะ - นครสวรรค์</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { margin: 0; font-family: 'Sarabun', sans-serif; }
-        #map { width: 100%; height: 100vh; }
-        .user-gps-dot { background: #3b82f6; border-radius: 50%; border: 3px solid white; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } }
+        * { box-sizing: border-box; font-family: 'Sarabun', sans-serif; }
+        body { margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
+        #map { width: 100%; height: 40vh; box-shadow: inset 0 -5px 15px rgba(0,0,0,0.05); }
+        .container { padding: 20px; max-width: 650px; margin: -30px auto 30px; position: relative; z-index: 1001; }
+        .panel { background: rgba(255, 255, 255, 0.95); padding: 24px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid rgba(226, 232, 240, 0.8); backdrop-filter: blur(10px); }
+        .station-detail { background: #f0fdf4; border: 2px solid #22c55e; color: #166534; padding: 16px; margin: 14px 0; border-radius: 14px; cursor: pointer; }
+        .backup-station { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; padding: 16px; margin: 14px 0; border-radius: 14px; cursor: pointer; }
+        .amenity-tag { background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.05); color: #475569; padding: 3px 10px; border-radius: 20px; font-size: 11px; display: inline-block; margin: 3px; }
+        .user-gps-dot { background-color: #3b82f6; border: 3px solid white; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); } 70% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); } }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <div class="container">
+        <div class="panel">
+            <h3><i class="fa-solid fa-satellite-dish" style="color: #3b82f6;"></i> ระบบแนะนำสถานีชาร์จ EV</h3>
+            <div id="status-text">กำลังค้นหาสถานีใกล้คุณ...</div>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 1. เริ่มต้นแผนที่
         var map = L.map('map').setView([15.700, 100.120], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // 2. ข้อมูลสถานีชาร์จครบทั้ง 13 จุด
+        var userPos = [15.89725, 100.30617];
         var stations = [
-            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "DC 120 kW" },
-            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, slots: 2, type: "DC 50 kW" },
-            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "AC 22 kW" },
-            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "DC 150 kW" },
-            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC 150 kW" },
-            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC 150 kW" },
-            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC 250 kW" },
-            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "DC 120 kW" },
-            { name: "Altervim Charging", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "DC 90 kW" },
-            { name: "Spark Charging", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "DC 120 kW" },
-            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "DC 120 kW" },
-            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "DC 120 kW" },
-            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "DC 120 kW" }
+            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "DC 120 kW", amenities: ["7-Eleven", "ห้องน้ำ"] },
+            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, slots: 2, type: "DC 50 kW", amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "AC 22 kW", amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "DC 150 kW", amenities: ["7-Eleven", "Amazon"] },
+            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC 150 kW", amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC 150 kW", amenities: ["7-Eleven", "ห้องน้ำ"] },
+            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC 250 kW", amenities: ["ห้าง V-Square", "Starbucks"] },
+            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "DC 120 kW", amenities: ["ร้านสะดวกซื้อ"] },
+            { name: "Altervim Charging", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "DC 90 kW", amenities: ["ห้องน้ำ"] },
+            { name: "Spark Charging", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "DC 120 kW", amenities: ["7-Eleven", "อินทนิล"] },
+            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "DC 120 kW", amenities: ["สำนักงาน PEA"] },
+            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "DC 120 kW", amenities: ["7-Eleven", "Amazon"] },
+            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "DC 120 kW", amenities: ["7-Eleven", "Amazon"] }
         ];
 
-        // 3. ปักหมุดสถานี
+        // ปักหมุดผู้ใช้
+        L.marker(userPos, { icon: L.divIcon({ className: 'user-gps-dot', iconSize: [20, 20] }) }).addTo(map).bindPopup("คุณอยู่ที่นี่");
+
+        // คำนวณระยะทาง
         stations.forEach(s => {
-            L.marker([s.lat, s.lng]).addTo(map)
-             .bindPopup(`<b>${s.name}</b><br>ประเภท: ${s.type}<br>สถานะ: ว่าง ${s.slots} ช่อง`);
+            let dist = Math.sqrt(Math.pow(s.lat - userPos[0], 2) + Math.pow(s.lng - userPos[1], 2)) * 111;
+            s.dist = dist.toFixed(2);
+            L.marker([s.lat, s.lng]).addTo(map).bindPopup(`<b>${s.name}</b><br>${s.type}<br>ว่าง: ${s.slots} ช่อง`);
         });
 
-        // 4. ปักหมุดผู้ใช้
-        L.marker([15.89725, 100.30617], { 
-            icon: L.divIcon({ className: 'user-gps-dot', iconSize: [20, 20] }) 
-        }).addTo(map).bindPopup("คุณอยู่ที่นี่");
+        // แสดงผลรายการ
+        stations.sort((a,b) => a.dist - b.dist);
+        let html = stations.map((s, i) => `
+            <div class="${i === 0 ? 'station-detail' : 'backup-station'}">
+                <strong>${i === 0 ? '⚡ ใกล้ที่สุด:' : 'สำรอง:'} ${s.name}</strong><br>
+                ระยะทาง: ${s.dist} กม. | ประเภท: ${s.type}<br>
+                ${s.amenities.map(a => `<span class="amenity-tag">${a}</span>`).join('')}
+            </div>
+        `).join('');
+        document.getElementById('status-text').innerHTML = html;
     </script>
 </body>
 </html>
