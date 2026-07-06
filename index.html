@@ -2,17 +2,19 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>ระบบสถานีชาร์จ EV อัจฉริยะ - นครสวรรค์</title>
+    <title>ระบบสถานีชาร์จ EV อัจฉริยะ</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Kanit', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
-        #map { width: 100%; height: 350px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        #map { width: 100%; height: 300px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
         .gps-banner { background: #1e293b; color: white; padding: 12px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; }
         .card { background: white; padding: 20px; border-radius: 20px; margin-bottom: 15px; border-left: 5px solid #3b82f6; }
-        .status-badge { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+        .tag { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; margin-right: 5px; display: inline-block; margin-top: 5px; }
         .btn-nav { background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; font-family: 'Kanit'; }
+        textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; margin-top: 10px; font-family: 'Kanit'; box-sizing: border-box; }
+        .analysis-box { background: #fff; padding: 15px; border-radius: 15px; border: 1px dashed #3b82f6; font-size: 0.85rem; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -20,40 +22,41 @@
     <div id="map"></div>
     
     <div class="gps-banner">
-        <i class="fa-solid fa-location-dot"></i> ตำแหน่ง GPS ของคุณ: 15.89725, 100.30617
+        <i class="fa-solid fa-location-dot"></i> พิกัด GPS ของคุณ: 15.89725, 100.30617
     </div>
 
-    <div id="list"></div>
+    <div class="analysis-box">
+        <i class="fa-solid fa-calculator"></i> <b>สรุปการวิเคราะห์ (จากไฟล์ 1000065409_3.jpg):</b><br>
+        จุดยอด (Vertex) ที่ใกล้ที่สุดคือ <b>EA Anywhere 4</b> โดยมีระยะทางกระจัดเส้นตรงบนผิวโลกประมาณ <b>25.73 กม.</b>
+    </div>
+
+    <div id="list" style="margin-top: 20px;"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // พิกัดจากไฟล์ "1000065409_2.jpg"
         var myLat = 15.89725, myLng = 100.30617;
-        var map = L.map('map').setView([myLat, myLng], 11);
+        var map = L.map('map').setView([myLat, myLng], 10);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // เพิ่มหมุดตำแหน่งของคุณ
-        L.marker([myLat, myLng], {icon: L.divIcon({html: '<i class="fa-solid fa-user-circle" style="color:red; font-size:24px;"></i>'})})
-         .addTo(map).bindPopup("ตำแหน่งของคุณ");
+        L.marker([myLat, myLng]).addTo(map).bindPopup("ตำแหน่งของคุณ");
 
-        var evStations = [
-            { name: "EA Anywhere 4", lat: 15.7489949, lng: 100.1215241, type: "DC 150 kW" },
-            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, type: "DC 120 kW" }
+        var stations = [
+            { name: "EA Anywhere 4", lat: 15.7489949, lng: 100.1215241, type: "DC 150 kW", amenities: ["7-Eleven", "ห้องน้ำ"] },
+            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, type: "DC 120 kW", amenities: ["7-Eleven", "ห้องน้ำ", "กาแฟ"] }
         ];
 
-        // เพิ่มหมุดสถานีชาร์จ
-        evStations.forEach(s => {
-            L.marker([s.lat, s.lng]).addTo(map).bindPopup(`<b>${s.name}</b><br>${s.type}`);
+        stations.forEach(s => {
+            L.marker([s.lat, s.lng]).addTo(map).bindPopup(`<b>${s.name}</b>`);
+            document.getElementById("list").innerHTML += `
+                <div class="card">
+                    <h3>${s.name}</h3>
+                    <p><i class="fa-solid fa-bolt"></i> ${s.type}</p>
+                    <div>${s.amenities.map(a => `<span class="tag">${a}</span>`).join('')}</div>
+                    <button class="btn-nav" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}')">นำทาง</button>
+                    <textarea placeholder="เขียนรีวิวสถานีนี้..."></textarea>
+                </div>
+            `;
         });
-
-        document.getElementById("list").innerHTML = evStations.map((s, i) => `
-            <div class="card">
-                <span class="status-badge">${i === 0 ? 'ใกล้ที่สุด (จากภาพ)' : 'สถานีแนะนำ'}</span>
-                <h3>${s.name}</h3>
-                <p>ประเภท: ${s.type}</p>
-                <button class="btn-nav" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}')">นำทาง</button>
-            </div>
-        `).join('');
     </script>
 </body>
 </html>
