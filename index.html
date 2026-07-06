@@ -7,17 +7,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Sarabun', sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
-        #map { width: 100%; height: 35vh; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .card { padding: 15px; margin: 10px 0; border-radius: 14px; cursor: pointer; border: 2px solid #ddd; transition: 0.3s; }
-        .card:hover { transform: scale(1.02); }
-        .primary { background: #f0fdf4; border-color: #22c55e; }
-        .backup { background: #fff7ed; border-color: #f97316; }
-        .tag { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 8px; font-size: 12px; margin-right: 5px; margin-top: 5px; }
-        .review-area { margin-top: 10px; }
-        textarea { width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px; resize: none; font-family: 'Sarabun'; }
-        .analysis-box { background: #f1f5f9; padding: 20px; border-radius: 14px; font-size: 14px; line-height: 1.8; margin-top: 15px; border-left: 5px solid #3b82f6; }
+        body { font-family: 'Sarabun', sans-serif; background: #f8fafc; padding: 20px; }
+        #map { width: 100%; height: 40vh; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card { padding: 15px; margin: 10px 0; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; }
+        .review-section { margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1; }
+        textarea { width: 100%; height: 50px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        .tag { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 8px; font-size: 11px; margin-right: 5px; }
+        .analysis-box { background: #eff6ff; padding: 15px; border-radius: 14px; margin-bottom: 20px; border-left: 5px solid #3b82f6; }
     </style>
 </head>
 <body>
@@ -25,62 +22,51 @@
     <div id="map"></div>
     
     <div class="panel">
-        <h3><i class="fa-solid fa-check-circle" style="color: #22c55e;"></i> สถานีชาร์จที่แนะนำสำหรับคุณ</h3>
-        <div id="list">กำลังประมวลผลตำแหน่ง...</div>
-        
-        <!-- ส่วนสรุปผลการวิเคราะห์คณิตศาสตร์ -->
-        <div class="analysis-box" id="analysis"></div>
+        <div class="analysis-box" id="analysis">กำลังประมวลผลข้อมูลโครงข่าย...</div>
+        <h3><i class="fa-solid fa-charging-station"></i> รายการสถานีชาร์จทั้งหมด (${evStations.length} แห่ง)</h3>
+        <div id="list"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        var evStations = [
+            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "DC 120 kW", amenities: ["7-Eleven", "ห้องน้ำ", "กาแฟ"] },
+            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, slots: 2, type: "DC 50 kW", amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, slots: 3, type: "AC 22 kW", amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, slots: 4, type: "DC 150 kW", amenities: ["7-Eleven", "Amazon"] },
+            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC 150 kW", amenities: ["ห้องน้ำ"] },
+            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC 150 kW", amenities: ["7-Eleven", "ห้องน้ำ"] },
+            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC 250 kW", amenities: ["ห้าง V-Square", "Starbucks"] },
+            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, slots: 2, type: "DC 120 kW", amenities: ["ร้านสะดวกซื้อ"] },
+            { name: "Altervim Charging", lat: 15.7078974, lng: 100.0946941, slots: 2, type: "DC 90 kW", amenities: ["ห้องน้ำ"] },
+            { name: "Spark Charging", lat: 15.7076225, lng: 100.0876302, slots: 2, type: "DC 120 kW", amenities: ["7-Eleven", "อินทนิล"] },
+            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "DC 120 kW", amenities: ["สำนักงาน PEA"] },
+            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, slots: 3, type: "DC 120 kW", amenities: ["7-Eleven", "Amazon"] },
+            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, slots: 3, type: "DC 120 kW", amenities: ["7-Eleven", "Amazon"] }
+        ];
+
         var map = L.map('map').setView([15.700, 100.120], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        var evStations = [
-            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, rating: 4.8, amenities: ["7-Eleven", "ห้องน้ำ", "กาแฟ"] },
-            { name: "MG Super Charge", lat: 15.700614, lng: 100.1210426, rating: 4.2, amenities: ["ห้องน้ำ"] },
-            { name: "EA Anywhere (จุดที่ 1)", lat: 15.6976186, lng: 100.1195736, rating: 4.0, amenities: ["ห้องน้ำ"] },
-            { name: "EA Anywhere (จุดที่ 2)", lat: 15.7309677, lng: 100.1164405, rating: 4.5, amenities: ["7-Eleven", "Amazon"] },
-            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, rating: 4.3, amenities: ["ห้องน้ำ"] },
-            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, rating: 4.8, amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ"] },
-            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, rating: 5.0, amenities: ["ห้าง V-Square", "Starbucks"] },
-            { name: "ReverSharger 2", lat: 15.6401394, lng: 100.1332916, rating: 4.1, amenities: ["ร้านสะดวกซื้อ"] },
-            { name: "Altervim Charging", lat: 15.7078974, lng: 100.0946941, rating: 4.4, amenities: ["ห้องน้ำ"] },
-            { name: "Spark Charging", lat: 15.7076225, lng: 100.0876302, rating: 4.6, amenities: ["7-Eleven", "อินทนิล"] },
-            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, rating: 4.7, amenities: ["สำนักงาน PEA"] },
-            { name: "PTT Station (จุดที่ 1)", lat: 15.7079146, lng: 100.1429420, rating: 4.8, amenities: ["7-Eleven", "Amazon"] },
-            { name: "PTT Station (จุดที่ 2)", lat: 15.6317220, lng: 100.1294172, rating: 4.5, amenities: ["7-Eleven", "Amazon"] }
-        ];
-
-        navigator.geolocation.getCurrentPosition(pos => {
-            let uLat = pos.coords.latitude, uLng = pos.coords.longitude;
-            let sorted = evStations.map(s => ({...s, d: getDist(uLat, uLng, s.lat, s.lng)})).sort((a,b) => a.d - b.d);
-            let primary = sorted[0];
-
-            document.getElementById("list").innerHTML = sorted.slice(0, 2).map((s, i) => `
-                <div class="card ${i === 0 ? 'primary' : 'backup'}" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}')">
-                    <strong>${i === 0 ? '★ สถานีหลัก' : '🛡️ สถานีสำรอง'}: ${s.name}</strong><br>
-                    ระยะทาง: ${s.d.toFixed(2)} กม. | คะแนน: ${s.rating} / 5.0<br>
-                    <div>${s.amenities.map(a => `<span class="tag">${a}</span>`).join('')}</div>
-                    <div class="review-area"><textarea placeholder="เขียนรีวิวสถานีนี้..."></textarea></div>
-                </div>
-            `).join('');
-
-            document.getElementById("analysis").innerHTML = `
-                <p><i class="fa-solid fa-check-double"></i> <b>เชื่อมต่อโครงข่ายคณิตศาสตร์สำเร็จ!</b></p>
-                <p><i class="fa-solid fa-location-dot"></i> พิกัดปัจจุบันของคุณ: ${uLat.toFixed(5)}, ${uLng.toFixed(5)}</p>
-                <p><i class="fa-solid fa-square-poll-vertical"></i> <b>การวิเคราะห์ทฤษฎีกราฟ:</b> จุดยอด (Vertex) ตู้ชาร์จรถไฟฟ้าที่ใกล้ที่สุดคือ ${primary.name}</p>
-                <p><i class="fa-solid fa-ruler-horizontal"></i> ระยะทางกระจัดเส้นตรงบนผิวโลกประมาณ: <b>${primary.d.toFixed(2)} กม.</b></p>
-            `;
+        // เพิ่มหมุดบนแผนที่ทั้งหมด
+        evStations.forEach(st => {
+            L.marker([st.lat, st.lng]).addTo(map).bindPopup(`<b>${st.name}</b><br>${st.type} (${st.slots} ช่อง)`);
         });
 
-        function getDist(lat1, lon1, lat2, lon2) {
-            let R = 6371;
-            let dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
-            let a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        }
+        // แสดงผลรายการ
+        document.getElementById("list").innerHTML = evStations.map(s => `
+            <div class="card">
+                <strong>${s.name}</strong><br>
+                <small><i class="fa-solid fa-bolt"></i> ${s.type} | <i class="fa-solid fa-car"></i> ${s.slots} ช่องชาร์จ</small><br>
+                <div>${s.amenities.map(a => `<span class="tag">${a}</span>`).join('')}</div>
+                <div class="review-section">
+                    <label style="font-size: 12px; color: #64748b;">รีวิวสถานีนี้:</label>
+                    <textarea placeholder="เขียนรีวิว..."></textarea>
+                </div>
+            </div>
+        `).join('');
+
+        document.getElementById("analysis").innerHTML = `<i class="fa-solid fa-check-double"></i> <b>เชื่อมต่อโครงข่ายคณิตศาสตร์สำเร็จ!</b> แสดงผลสถานีชาร์จ EV ในระบบจำนวน ${evStations.length} จุดเรียบร้อยแล้ว`;
     </script>
 </body>
 </html>
