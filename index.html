@@ -13,7 +13,7 @@
         * { box-sizing: border-box; font-family: 'Sarabun', sans-serif; }
         body { margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
 
-        #map { width: 100%; height: 40vh; box-shadow: inset 0 -5px 15px rgba(0,0,0,0.05); }
+        #map { width: 100%; height: 45vh; box-shadow: inset 0 -5px 15px rgba(0,0,0,0.05); z-index: 1; }
 
         .container { padding: 20px; max-width: 650px; margin: -30px auto 30px; position: relative; z-index: 1001; }
 
@@ -42,8 +42,6 @@
         }
         .graph-summary .line { display: flex; gap: 8px; align-items: flex-start; }
         .graph-summary .ok { color: #4ade80; font-weight: 700; }
-        .graph-summary .label { color: #94a3b8; }
-        .graph-summary b { color: #fbbf24; }
 
         .station-detail, .backup-station {
             padding: 16px;
@@ -83,14 +81,8 @@
 
         .btn-submit {
             background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            width: 100%;
+            color: white; border: none; padding: 10px 20px;
+            border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; width: 100%;
         }
 
         .user-gps-dot {
@@ -102,6 +94,7 @@
             70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
+        .map-icon { font-size: 18px; text-align: center; line-height: 1; filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.3)); }
     </style>
 </head>
 <body>
@@ -126,17 +119,17 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        var map = L.map('map').setView([15.700, 100.120], 13);
+        var map = L.map('map').setView([15.700, 100.120], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' }).addTo(map);
 
         var evStations = [
             { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, slots: 4, type: "DC 120 kW", amenities: ["7-Eleven", "ห้องน้ำ"], systemStars: 4.6 },
-            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC 150 kW", amenities: ["7-Eleven", "ห้องน้ำ"], systemStars: 4.8 },
-            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC 250 kW", amenities: ["Starbucks", "ห้าง"], systemStars: 4.9 },
-            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC 150 kW", amenities: ["ห้องน้ำ"], systemStars: 4.3 }
+            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, slots: 6, type: "DC 150 kW", amenities: ["7-Eleven", "ห้องน้ำ", "ร้านกาแฟ"], systemStars: 4.8 },
+            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, slots: 4, type: "DC 250 kW", amenities: ["Starbucks", "ห้างสรรพสินค้า"], systemStars: 4.9 },
+            { name: "EA Anywhere (จุดที่ 3)", lat: 15.7369174, lng: 100.1187196, slots: 2, type: "DC 150 kW", amenities: ["ห้องน้ำ", "ร้านค้าปลีก"], systemStars: 4.3 },
+            { name: "PEA VOLTA นครสวรรค์", lat: 15.7096599, lng: 100.1154054, slots: 4, type: "DC 120 kW", amenities: ["สำนักงาน PEA"], systemStars: 4.3 }
         ];
 
-        // ฟังก์ชันเปิด Google Maps
         function openInGoogleMaps(lat, lng) {
             window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`, '_blank');
         }
@@ -145,30 +138,51 @@
             var userLat = position.coords.latitude;
             var userLng = position.coords.longitude;
 
+            // 1. หมุดตำแหน่งปัจจุบันของเรา
             var gpsIcon = L.divIcon({ className: 'user-gps-dot', iconSize: [16, 16] });
-            L.marker([userLat, userLng], { icon: gpsIcon }).addTo(map);
+            L.marker([userLat, userLng], { icon: gpsIcon }).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
 
+            // คำนวณระยะทาง
             var calculatedList = evStations.map(function(st) {
                 var d = calculateHaversine(userLat, userLng, st.lat, st.lng);
                 return { ...st, d: d };
             }).sort((a, b) => a.d - b.d);
 
-            var p = calculatedList[0];
-            var s = calculatedList[1];
+            var p = calculatedList[0]; // สถานีหลัก (ใกล้สุด)
+            var s = calculatedList[1]; // สถานีสำรอง (ใกล้รองลงมา)
 
+            // 2. ปักหมุด "สถานีทั้งหมด" บนแผนที่
+            evStations.forEach(function(st) {
+                var iconEmoji = '⚡'; 
+                if(st.name === p.name) iconEmoji = '⭐'; // ไอคอนสถานีหลัก
+                if(st.name === s.name) iconEmoji = '🛡️'; // ไอคอนสถานีสำรอง
+                
+                var stIcon = L.divIcon({ html: `<div class="map-icon">${iconEmoji}</div>`, className: '', iconSize: [24,24] });
+                L.marker([st.lat, st.lng], {icon: stIcon}).addTo(map).bindPopup(`<b>${st.name}</b><br>${st.type}`);
+            });
+
+            // 3. ลากเส้นเชื่อมไปยังสถานีหลักและรอง
+            L.polyline([[userLat, userLng], [p.lat, p.lng]], {color: '#22c55e', weight: 4}).addTo(map); // เส้นทึบสีเขียว (สถานีหลัก)
+            L.polyline([[userLat, userLng], [s.lat, s.lng]], {color: '#f97316', weight: 4, dashArray: '8, 8'}).addTo(map); // เส้นประสีส้ม (สถานีสำรอง)
+
+            // 4. แสดงการ์ดข้อมูล (กดเพื่อนำทาง Google Maps)
             document.getElementById("status-text").innerHTML = `
                 <div class="graph-summary">
-                    <div class="line"><span class="ok">✓</span> เชื่อมต่อสำเร็จ! (แตะการ์ดเพื่อนำทาง)</div>
+                    <div class="line"><span class="ok">✓</span> ประมวลผลดุลยภาพพิกัดสำเร็จ (คลิกที่กล่องการ์ดเพื่อนำทางบน Google Maps):</div>
                 </div>
                 <div class="station-detail" onclick="openInGoogleMaps(${p.lat}, ${p.lng})">
-                    <strong>★ สถานีหลัก: ${p.name}</strong><br>
-                    ระยะทาง: ${p.d.toFixed(2)} กม. | ${p.slots} ช่องชาร์จ<br>
-                    <span class="star-rating">คะแนน: ${p.systemStars} / 5.0</span>
+                    <strong>★ สถานีหลักที่ใกล้ที่สุด (Primary): <br>${p.name}</strong><br><br>
+                    📍 ระยะทางกระจัด: <b>${p.d.toFixed(2)} กม.</b><br>
+                    🔌 ทรัพยากร: <b>${p.slots} ช่องชาร์จ</b> | กระแสตรง (${p.type})<br><br>
+                    ${p.amenities.map(a => `<span class='amenity-tag'>${a}</span>`).join('')}<br>
+                    <span class="star-rating">คะแนนระบบ: ${p.systemStars} / 5.0</span>
                 </div>
                 <div class="backup-station" onclick="openInGoogleMaps(${s.lat}, ${s.lng})">
-                    <strong>🛡️ สถานีสำรอง: ${s.name}</strong><br>
-                    ระยะทาง: ${s.d.toFixed(2)} กม. | ${s.slots} ช่องชาร์จ<br>
-                    <span class="star-rating" style="color:#eab308;">คะแนน: ${s.systemStars} / 5.0</span>
+                    <strong>🛡️ สถานีสำรองแนะนำ (Alternative): <br>${s.name}</strong><br><br>
+                    📍 ระยะทางถัดไป: <b style="color:#c2410c;">${s.d.toFixed(2)} กม.</b> (กรณีสถานีหลักไม่ว่าง)<br>
+                    🔌 ทรัพยากร: <b>${s.slots} ช่องชาร์จ</b> | กระแสตรง (${s.type})<br><br>
+                    ${s.amenities.map(a => `<span class='amenity-tag'>${a}</span>`).join('')}<br>
+                    <span class="star-rating" style="color:#eab308;">คะแนนระบบ: ${s.systemStars} / 5.0</span>
                 </div>
             `;
         });
@@ -181,7 +195,7 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
-        function addReview() { alert("บันทึกความคิดเห็นแล้ว"); }
+        function addReview() { alert("บันทึกความคิดเห็นแล้ว ขอบคุณครับ!"); }
     </script>
 </body>
 </html>
