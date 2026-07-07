@@ -1,96 +1,214 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจัดสรรโครงข่าย EV อัจฉริยะ</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Sarabun', sans-serif; background: #f1f5f9; margin: 0; padding-bottom: 50px; }
-        #map { width: 100%; height: 40vh; }
-        .container { max-width: 600px; margin: -30px auto 20px; padding: 20px; position: relative; z-index: 1001; }
-        .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .card { background: white; padding: 15px; border-radius: 15px; margin-bottom: 10px; border-left: 5px solid #ccc; }
-        .card-main { border-left-color: #22c55e; background: #f0fdf4; }
-        .card-sub { border-left-color: #f97316; background: #fff7ed; }
-        .amenity { display: inline-block; background: #e2e8f0; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin: 2px; }
-        .btn-nav { display: inline-block; margin-top: 10px; background: #3b82f6; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 13px; }
-        .review-box { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-        .input-text { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; }
-        .btn-submit { background: #6366f1; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; width: 100%; }
-        .user-dot { background: #ef4444; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบคำนวณเส้นทางไปสถานีชาร์จ EV | นครสวรรค์</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{\n    --bg:#ffffff;\n    --bg-soft:#f5f8f8;\n    --bg-soft-2:#eef3f3;\n    --ink:#0e1517;\n    --ink-soft:#5b6b6e;\n    --ink-faint:#8b9a9c;\n    --line:#e2e9e9;\n    --volt:#0e9c8f;\n    --volt-dark:#086e68;\n    --volt-tint:#e4f5f3;\n    --spark:#f5a623;\n    --spark-tint:#fef3e0;\n    --alt:#3d7fbf;\n    --alt-tint:#e8f1fa;\n    --radius-lg:20px;\n    --radius-md:14px;\n    --radius-sm:9px;\n    --shadow: 0 1px 2px rgba(14,21,23,0.04), 0 8px 24px -12px rgba(14,21,23,0.10);\n  }\n  *{box-sizing:border-box;}\n  html,body{margin:0;padding:0;}\n  body{\n    background:var(--bg);\n    color:var(--ink);\n    font-family:'Inter',system-ui,sans-serif;\n    -webkit-font-smoothing:antialiased;\n    line-height:1.5;\n  }\n  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;letter-spacing:-0.01em;}\n  .mono{font-family:'IBM Plex Mono',monospace;}\n  a{color:inherit;}\n  img,svg{display:block;}\n  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;}\n\n  header{\n    background:#fff;\n    border-bottom:1px solid var(--line);\n  }\n  .nav{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;max-width:1120px;margin:0 auto;gap:16px;flex-wrap:wrap;}\n  .logo{display:flex;align-items:center;gap:10px;}\n  .logo .bolt{width:28px;height:28px;background:var(--volt);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}\n  .logo-text h1{font-size:16.5px;margin:0;font-weight:700;}\n  .logo-text p{margin:0;font-size:12.5px;color:var(--ink-soft);}\n  .btn{\n    border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:14.5px;\n    padding:12px 22px;border-radius:12px;display:inline-flex;align-items:center;gap:8px;\n    transition:transform .12s ease, box-shadow .12s ease, background .15s;white-space:nowrap;\n  }\n  .btn:active{transform:scale(0.97);}\n  .btn-primary{background:var(--ink);color:#fff;}\n  .btn-primary:hover{background:#000;box-shadow:0 8px 20px -8px rgba(0,0,0,0.35);}\n  .btn-outline{background:#fff;color:var(--ink);border:1.5px solid var(--line);}\n  .btn-outline:hover{border-color:var(--volt);color:var(--volt-dark);}\n  .btn-submit{background:var(--volt-dark);color:#fff;width:100%;justify-content:center;padding:13px;}\n  .btn-submit:hover{background:#065450;}\n  .btn-sm{padding:8px 14px;font-size:13px;border-radius:9px;}\n  .btn:disabled{opacity:0.55;cursor:progress;}\n\n  .status{\n    max-width:760px;margin:18px auto 0;padding:13px 18px;border-radius:12px;\n    background:var(--bg-soft);border:1px solid var(--line);\n    font-size:14px;color:var(--ink-soft);text-align:center;display:none;\n  }\n  .status.show{display:block;}\n  .status.ok{background:var(--volt-tint);border-color:#c7ebe6;color:var(--volt-dark);}\n  .status.warn{background:var(--spark-tint);border-color:#f8dfad;color:#8a5c05;}\n\n  section{padding:36px 0;}\n  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}\n  .section-head h2{font-size:19px;margin:0;}\n  .section-head .note{color:var(--ink-faint);font-size:13px;}\n\n  .map-card{\n    border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;\n    box-shadow:var(--shadow);\n  }\n  #map{height:460px;width:100%;background:var(--bg-soft);}\n  .leaflet-popup-content-wrapper{border-radius:12px;}\n  .popup-title{font-weight:700;font-size:14px;margin-bottom:4px;}\n  .popup-row{font-size:12.5px;color:var(--ink-soft);margin-bottom:2px;}\n  .popup-tags{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0;}\n  .popup-btn{margin-top:8px;}\n\n  .result-banner{\n    display:flex;align-items:center;gap:10px;\n    background:var(--volt-tint);border:1px solid #c7ebe6;color:var(--volt-dark);\n    padding:14px 18px;border-radius:12px;font-size:14px;font-weight:600;margin-bottom:20px;\n  }\n  .result-banner .ico{flex-shrink:0;}\n  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;}\n  @media(max-width:760px){.cards{grid-template-columns:1fr;}}\n  .rcard{border-radius:var(--radius-lg);padding:22px;border:1.5px solid var(--line);background:#fff;box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s;}\n  .rcard:hover{border-color:var(--ink-faint);}\n  .rcard.primary{border-color:var(--volt);background:var(--volt-tint);}\n  .rcard.alt{border-color:var(--alt);background:var(--alt-tint);}\n  .rcard-tag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;margin-bottom:10px;}\n  .rcard.primary .rcard-tag{color:var(--volt-dark);}\n  .rcard.alt .rcard-tag{color:var(--alt);}\n  .rcard h3{font-size:17.5px;margin:0 0 12px;}\n  .rcard-row{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;color:var(--ink-soft);margin-bottom:7px;}\n  .rcard-row b{color:var(--ink);}\n  .rcard-tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px;}\n  .tag{background:#fff;border:1px solid var(--line);color:var(--ink-soft);font-size:12px;padding:5px 10px;border-radius:99px;}\n  .rcard.primary .tag, .rcard.alt .tag{background:rgba(255,255,255,0.7);}\n  .rcard-score{font-size:13px;color:var(--ink-soft);display:flex;align-items:center;gap:5px;}\n  .rcard-score b{color:var(--ink);font-family:'IBM Plex Mono',monospace;}\n\n  .path-trace{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);}\n  .path-trace-label{font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:5px;}\n  .path-trace-steps{font-size:13px;line-height:1.6;display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;}\n  .path-node{background:var(--bg-soft-2);padding:2px 8px;border-radius:6px;font-weight:500;}\n  .path-node.end{background:var(--volt);color:#fff;font-weight:600;}\n  .path-hop{color:var(--ink-faint);display:inline-flex;align-items:center;gap:4px;font-size:12px;}\n  .path-hop-dist{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--ink-soft);}\n\n  .more-toggle{text-align:center;margin-top:16px;}\n  .rank-list{display:grid;gap:10px;margin-top:14px;}\n  .rank-item{display:flex;align-items:center;gap:14px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;}\n  .rank-item:hover{border-color:var(--ink-faint);}\n  .rank-num{width:26px;height:26px;border-radius:50%;background:var(--bg-soft-2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}\n  .rank-name{font-weight:600;font-size:14px;}\n  .rank-meta{font-size:12px;color:var(--ink-soft);}\n  .rank-dist{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13.5px;color:var(--volt-dark);white-space:nowrap;}\n\n  .review-card{border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px;background:var(--bg-soft);box-shadow:var(--shadow);}\n  .review-card h3{font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:8px;}\n  .review-card .sub{font-size:13px;color:var(--ink-soft);margin:0 0 18px;}\n  .review-form{display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;}\n  @media(max-width:600px){.review-form{grid-template-columns:1fr;}}\n  select,input[type=text],textarea{\n    width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 13px;\n    font-family:inherit;font-size:14px;color:var(--ink);background:#fff;\n  }\n  select:focus,input:focus,textarea:focus{outline:2px solid var(--volt);outline-offset:-1px;}\n  textarea{resize:vertical;min-height:70px;margin-bottom:12px;}\n  .review-list{margin-top:18px;display:grid;gap:10px;}\n  .review-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;}\n  .review-item .rh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}\n  .review-item .rname{font-weight:600;font-size:13.5px;}\n  .review-item .rstars{color:var(--spark);font-size:13px;}\n  .review-item .rtext{font-size:13.5px;color:var(--ink-soft);}\n  .review-empty{font-size:13px;color:var(--ink-faint);text-align:center;padding:14px;}\n\n  .table-wrap{border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow);}\n  table{width:100%;border-collapse:collapse;font-size:14px;}\n  thead th{\n    text-align:left;background:var(--bg-soft);color:var(--ink-soft);\n    font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;\n    padding:13px 16px;border-bottom:1px solid var(--line);white-space:nowrap;\n  }\n  tbody td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top;}\n  tbody tr:last-child td{border-bottom:none;}\n  tbody tr:hover{background:#fafcfc;}\n  .st-name{font-weight:600;}\n  .st-sub{color:var(--ink-faint);font-size:12px;margin-top:2px;}\n  .power-pill{\n    display:inline-flex;align-items:center;gap:5px;background:var(--spark-tint);color:#8a5c05;\n    padding:5px 10px;border-radius:99px;font-size:12.5px;font-weight:600;white-space:nowrap;\n  }\n  .amenity-tags{display:flex;gap:6px;flex-wrap:wrap;max-width:190px;}\n  .stars-input{display:flex;gap:2px;cursor:pointer;user-select:none;}\n  .stars-input svg{width:16px;height:16px;}\n  .rating-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}\n  .rating-label{font-size:11px;color:var(--ink-faint);width:64px;flex-shrink:0;}\n  .rating-num{font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;}\n  .dist-cell{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--volt-dark);}\n\n  details.matrix-box{border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px 22px;background:var(--bg-soft);}\n  details.matrix-box summary{cursor:pointer;font-weight:600;font-size:14.5px;list-style:none;display:flex;align-items:center;gap:8px;}\n  details.matrix-box summary::-webkit-details-marker{display:none;}\n  details.matrix-box summary .chev{transition:transform .15s;}\n  details[open] summary .chev{transform:rotate(90deg);}\n  .matrix-note{color:var(--ink-soft);font-size:13px;margin:12px 0 16px;}\n  .matrix-scroll{overflow-x:auto;}\n  table.matrix{font-family:'IBM Plex Mono',monospace;font-size:12px;border-collapse:collapse;}\n  table.matrix th,table.matrix td{border:1px solid var(--line);padding:7px 10px;text-align:center;white-space:nowrap;}\n  table.matrix th{background:#fff;font-weight:600;color:var(--ink-soft);}\n  table.matrix td.diag{background:var(--bg-soft-2);color:var(--ink-faint);}\n\n  footer{border-top:1px solid var(--line);padding:26px 0;text-align:center;color:var(--ink-faint);font-size:12.5px;}\n</style>
 </head>
 <body>
 
-    <div id="map"></div>
-
-    <div class="container">
-        <div class="panel">
-            <h3><i class="fa-solid fa-satellite-dish"></i> การวิเคราะห์โครงข่ายสถานี</h3>
-            <div id="graph-analysis" style="font-size: 14px; line-height: 1.6;"></div>
-        </div>
-
-        <div id="station-list"></div>
+<header>
+  <div class="nav">
+    <div class="logo">
+      <span class="bolt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2 3 14h7l-1 8 11-13h-7l1-7z" fill="#fff"/></svg></span>
+      <div class="logo-text">
+        <h1>ระบบคำนวณเส้นทางไปสถานีชาร์จ EV นครสวรรค์</h1>
+        <p>ใช้ทฤษฎีกราฟ (Dijkstra) และเมทริกซ์ระยะทาง ครอบคลุมทั้งจังหวัดนครสวรรค์</p>
+      </div>
     </div>
+    <button class="btn btn-primary" id="locateBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" fill="currentColor"/></svg>
+      ค้นหาสถานีที่ใกล้ที่สุด
+    </button>
+  </div>
+  <div class="status" id="statusBar"></div>
+</header>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        const userPos = [15.89725, 100.30617];
-        const map = L.map('map').setView(userPos, 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-        
-        L.marker(userPos, { icon: L.divIcon({ className: 'user-dot', iconSize: [15, 15] }) }).addTo(map).bindPopup("คุณอยู่ที่นี่");
+<section id="map-section">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>แผนที่เครือข่ายสถานีชาร์จ</h2>
+      <span class="note">จุดสีคือระดับกำลังไฟสูงสุด · เส้นประคือเส้นทางที่คำนวณโดย Dijkstra</span>
+    </div>
+    <div class="map-card"><div id="map"></div></div>
+  </div>
+</section>
 
-        const stations = [
-            { name: "ReverSharger (ส.อรุณ)", lat: 15.7099424, lng: 100.1179482, type: "DC 120 kW", amenities: ["7-Eleven", "ห้องน้ำ"] },
-            { name: "EA Anywhere (จุดที่ 4)", lat: 15.7489949, lng: 100.1215241, type: "DC 150 kW", amenities: ["7-Eleven", "กาแฟ"] },
-            { name: "Tesla Supercharger", lat: 15.711412, lng: 100.0561, type: "DC 250 kW", amenities: ["ห้างสรรพสินค้า"] }
-        ];
+<section id="results" style="display:none;">
+  <div class="wrap">
+    <div class="result-banner">
+      <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="resultBannerText">ประมวลผลดุลยภาพพิกัดสำเร็จ (คลิกที่การ์ดหรือหมุดเพื่อเปลี่ยนสถานีที่เลือก)</span>
+    </div>
+    <div class="cards" id="resultCards"></div>
 
-        stations.forEach(s => s.dist = Math.sqrt(Math.pow(s.lat - userPos[0], 2) + Math.pow(s.lng - userPos[1], 2)) * 111);
-        stations.sort((a, b) => a.dist - b.dist);
+    <div class="more-toggle">
+      <button class="btn btn-outline btn-sm" id="toggleMoreBtn">ดูสถานีอื่นที่ใกล้เคียง</button>
+    </div>
+    <div class="rank-list" id="rankList" style="display:none;"></div>
 
-        document.getElementById('graph-analysis').innerHTML = `
-            เชื่อมต่อโครงข่ายคณิตศาสตร์สำเร็จ!<br>
-            พิกัดปัจจุบัน: <b>${userPos[0]}, ${userPos[1]}</b><br>
-            การวิเคราะห์ทฤษฎีกราฟ: Vertex ที่ใกล้ที่สุดคือ <b>${stations[0].name}</b><br>
-            ระยะทางกระจัด: <b>${stations[0].dist.toFixed(2)} กม.</b>
-        `;
+    <div style="height:22px;"></div>
+    <div class="review-card">
+      <h3>💬 สื่อสารและแบ่งปันข้อมูล (ระบบรีวิวผู้ใช้)</h3>
+      <p class="sub">ให้คะแนนและแสดงความคิดเห็นเกี่ยวกับสถานีชาร์จ — ข้อมูลจะถูกบันทึกและแสดงร่วมกับผู้ใช้ท่านอื่น</p>
+      <div class="review-form">
+        <input type="text" id="reviewName" placeholder="ชื่อของคุณ">
+        <select id="reviewStation"></select>
+      </div>
+      <div class="review-form" style="grid-template-columns:160px 1fr;">
+        <select id="reviewStars">
+          <option value="5">★★★★★</option>
+          <option value="4">★★★★☆</option>
+          <option value="3">★★★☆☆</option>
+          <option value="2">★★☆☆☆</option>
+          <option value="1">★☆☆☆☆</option>
+        </select>
+        <div></div>
+      </div>
+      <textarea id="reviewText" placeholder="พิมพ์ความคิดเห็นของคุณเกี่ยวกับสถานีชาร์จที่นี่..."></textarea>
+      <button class="btn btn-submit" id="submitReview">ส่งความคิดเห็น</button>
+      <div class="review-list" id="reviewList"></div>
+    </div>
+  </div>
+</section>
 
-        let html = "";
-        stations.slice(0, 2).forEach((s, i) => {
-            let typeClass = (i === 0) ? "card-main" : "card-sub";
-            let title = (i === 0) ? "สถานีหลัก (ใกล้ที่สุด)" : "สถานีรอง";
-            html += `
-                <div class="card ${typeClass}">
-                    <b>${title}: ${s.name}</b><br>
-                    <small>ประเภท: ${s.type} | ระยะทาง: ${s.dist.toFixed(2)} กม.</small><br>
-                    <div>${s.amenities.map(a => `<span class="amenity">${a}</span>`).join('')}</div>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" class="btn-nav"><i class="fa-solid fa-location-arrow"></i> นำทาง</a>
-                    
-                    <div class="review-box">
-                        <input type="text" id="name-${i}" class="input-text" placeholder="ชื่อของคุณ">
-                        <textarea id="text-${i}" class="input-text" placeholder="รีวิวที่นี่..."></textarea>
-                        <button class="btn-submit" onclick="addReview(${i})">ส่งรีวิว</button>
-                        <div id="list-${i}"></div>
-                    </div>
-                </div>`;
-            L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.name);
-        });
-        document.getElementById('station-list').innerHTML = html;
+<section id="stations">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>รายชื่อสถานีชาร์จ EV นครสวรรค์</h2>
+      <span class="note">เลือกสถานีเพื่อดูรีวิว หรือกด "นำทาง" เพื่อเปิด Google Maps</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ชื่อสถานี</th>
+            <th>หัวชาร์จ</th>
+            <th>กำลังไฟสูงสุด</th>
+            <th>สิ่งอำนวยความสะดวก</th>
+            <th>คะแนน</th>
+            <th>ระยะทาง</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="stationTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
 
-        function addReview(i) {
-            let name = document.getElementById('name-'+i).value;
-            let text = document.getElementById('text-'+i).value;
-            if(name && text) {
-                document.getElementById('list-'+i).innerHTML += `<p style="font-size:12px"><b>${name}</b>: ${text}</p>`;
-                document.getElementById('name-'+i).value = ''; document.getElementById('text-'+i).value = '';
-            }
-        }
-    </script>
+<section>
+  <div class="wrap">
+    <details class="matrix-box">
+      <summary><span class="chev">▶</span> ดูเมทริกซ์ระยะทางระหว่างสถานี (Distance Matrix)</summary>
+      <p class="matrix-note">ระบบคำนวณระยะทางเชิงเส้นตรง (Haversine) ระหว่างสถานีทุกคู่ไว้ล่วงหน้าเป็นเมทริกซ์ n×n เพื่อใช้เป็นน้ำหนักขอบ (edge weight) ประกอบการวางกราฟถนนที่ใช้กับอัลกอริทึม Dijkstra หน่วยเป็นกิโลเมตร</p>
+      <div class="matrix-scroll"><table class="matrix" id="matrixTable"></table></div>
+    </details>
+  </div>
+</section>
+
+<footer>ระบบคำนวณเส้นทางไปสถานีชาร์จ EV · Graph Theory + Distance Matrix + Dijkstra Algorithm · จังหวัดนครสวรรค์</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ===================== DATA (พิกัดจริงจากไฟล์ KML — 13 สถานี จ.นครสวรรค์) ===================== */
+const STATIONS = [
+  {id:'S1',  name:'สถานีชาร์จ ReverSharger',         lat:15.7099424, lng:100.1179482, area:'ใกล้ตัวเมือง',                 chargers:4, power:120, type:'DC', amenities:['ร้านสะดวกซื้อ','ห้องน้ำ','ร้านกาแฟ'], sysRating:4.3},
+  {id:'S2',  name:'MG Super Charge Charging Station', lat:15.700614,  lng:100.1210426, area:'ใกล้ตัวเมือง',                 chargers:2, power:100, type:'DC', amenities:['ห้องน้ำ'], sysRating:4.0},
+  {id:'S3',  name:'สถานีชาร์จ EA Anywhere 1',        lat:15.6976186, lng:100.1195736, area:'ตัวเมืองฝั่งใต้',              chargers:4, power:150, type:'DC', amenities:['ร้านสะดวกซื้อ','ห้องน้ำ'], sysRating:4.5},
+  {id:'S4',  name:'สถานีชาร์จ EA Anywhere 2',        lat:15.7309677, lng:100.1164405, area:'ทางเหนือของเมือง',            chargers:4, power:150, type:'DC', amenities:['ห้องน้ำ'], sysRating:4.3},
+  {id:'S5',  name:'สถานีชาร์จ EA Anywhere 3',        lat:15.7369174, lng:100.1187196, area:'ทางเหนือของเมือง',            chargers:6, power:150, type:'DC', amenities:['ร้านสะดวกซื้อ','ร้านกาแฟ'], sysRating:4.4},
+  {id:'S6',  name:'สถานีชาร์จ EA Anywhere 4',        lat:15.7494906, lng:100.1223824, area:'ทาง อ.ชุมแสง',                chargers:2, power:150, type:'DC', amenities:['ห้องน้ำ','ร้านกาแฟ'], sysRating:4.2},
+  {id:'S7',  name:'Tesla Supercharger',               lat:15.711412,  lng:100.0561,    area:'ถนนเลี่ยงเมือง (Global House)', chargers:4, power:250, type:'DC', amenities:['ร้านสะดวกซื้อ','ห้องน้ำ','ร้านกาแฟ'], sysRating:4.8},
+  {id:'S8',  name:'สถานีชาร์จ ReverSharger2',        lat:15.6401394, lng:100.1332916, area:'ทาง อ.พยุหะคีรี',             chargers:4, power:120, type:'DC', amenities:['ร้านสะดวกซื้อ','ห้องน้ำ'], sysRating:4.1},
+  {id:'S9',  name:'สถานีชาร์จ Altervim',             lat:15.7078974, lng:100.0946941, area:'ถนนเลี่ยงเมืองฝั่งตะวันตก',   chargers:4, power:60,  type:'DC', amenities:['ห้องน้ำ'], sysRating:4.0},
+  {id:'S10', name:'สถานีชาร์จ Spark',                 lat:15.7076225, lng:100.0876302, area:'ถนนเลี่ยงเมืองฝั่งตะวันตก',   chargers:4, power:120, type:'DC', amenities:['ร้านสะดวกซื้อ','ร้านกาแฟ'], sysRating:4.2},
+  {id:'S11', name:'สถานีชาร์จ PEA VOLTA',             lat:15.7096599, lng:100.1154054, area:'ใกล้ตัวเมือง',                 chargers:4, power:120, type:'DC', amenities:['ห้องน้ำ'], sysRating:4.1},
+  {id:'S12', name:'สถานีชาร์จ PTT 1',                 lat:15.7079146, lng:100.142942,  area:'ทางออกเมืองฝั่งตะวันออก',     chargers:3, power:120, type:'DC', amenities:['ร้านสะดวกซื้อ','ห้องน้ำ','ร้านกาแฟ'], sysRating:4.6},
+  {id:'S13', name:'สถานีชาร์จ PTT 2',                 lat:15.631722,  lng:100.1294172, area:'ทาง อ.พยุหะคีรี',             chargers:3, power:120, type:'DC', amenities:['ร้านสะดวกซื้อ','ห้องน้ำ','ร้านกาแฟ'], sysRating:4.4},
+];
+
+/* ===================== GRAPH ENGINE ===================== */
+function haversine(a,b){\n  const R=6371, toRad=d=>d*Math.PI/180;\n  const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);\n  const s=Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;\n  return R*2*Math.atan2(Math.sqrt(s), Math.sqrt(1-s));\n}\nfunction coordOf(nodeId, userPos){\n  if(nodeId==='USER') return userPos;\n  const st = STATIONS.find(s=>s.id===nodeId);\n  return st ? {lat:st.lat, lng:st.lng} : null;\n}\nfunction buildGraph(userPos){\n  const adj = {};\n  const addEdge=(a,b,w)=>{ (adj[a]=adj[a]||[]).push({to:b,w}); (adj[b]=adj[b]||[]).push({to:a,w}); };\n  for(let i=0;i<STATIONS.length;i++){\n    for(let j=i+1;j<STATIONS.length;j++){\n      addEdge(STATIONS[i].id, STATIONS[j].id, haversine(STATIONS[i], STATIONS[j]));\n    }\n  }\n  if(userPos){\n    let nearest=null, best=Infinity;\n    STATIONS.forEach(s=>{ const d = haversine(userPos, s); if(d<best){best=d; nearest=s.id;} });\n    addEdge('USER', nearest, best);\n  }\n  return adj;\n}\nfunction dijkstra(adj, source){\n  const dist={}, prev={}, visited={};\n  Object.keys(adj).forEach(n=> dist[n]=Infinity);\n  dist[source]=0;\n  const queue=new Set(Object.keys(adj));\n  while(queue.size){\n    let u=null, best=Infinity;\n    queue.forEach(n=>{ if(dist[n]<best){best=dist[n]; u=n;} });\n    if(u===null) break;\n    queue.delete(u); visited[u]=true;\n    (adj[u]||[]).forEach(({to,w})=>{\n      if(visited[to]) return;\n      const nd = dist[u]+w;\n      if(nd < (dist[to]===undefined?Infinity:dist[to])){ dist[to]=nd; prev[to]=u; }\n    });\n  }\n  return {dist, prev};\n}\nfunction reconstructPath(prev, target){\n  const path=[target]; let cur=target;\n  while(prev[cur]!==undefined){ cur=prev[cur]; path.unshift(cur); }\n  return path;\n}\nfunction buildMatrix(){ return STATIONS.map(a => STATIONS.map(b => a.id===b.id ? 0 : haversine(a,b))); }
+
+/* ===================== MAP ===================== */
+const map = L.map('map', {scrollWheelZoom:false}).setView([15.705, 100.11], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap contributors', maxZoom:19}).addTo(map);
+
+function powerColor(kw){ return kw>=200 ? '#e04f4f' : kw>=140 ? '#f5a623' : '#0e9c8f'; }
+function stationIcon(kw){
+  return L.divIcon({className:'', html:`<div style="width:16px;height:16px;border-radius:50%;background:${powerColor(kw)};border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>`, iconSize:[16,16], iconAnchor:[8,8]});
+}
+const stationMarkers = {};
+STATIONS.forEach(s=>{
+  const m = L.marker([s.lat,s.lng], {icon:stationIcon(s.power)}).addTo(map);
+  m.bindPopup(`
+    <div class="popup-title">${s.name}</div>
+    <div class="popup-row">หัวชาร์จ: ${s.chargers} หัว</div>
+    <div class="popup-row">กำลังไฟสูงสุด: ${s.type} ${s.power} kW</div>
+    <div class="popup-tags">${s.amenities.map(a=>`<span class="tag">${a}</span>`).join('')}</div>
+    <div class="popup-row">คะแนนระบบ: ${s.sysRating.toFixed(1)} / 5</div>
+    <button class="btn btn-outline btn-sm popup-btn" onclick="navigateTo(${s.lat},${s.lng})">นำทางด้วย GPS</button>
+  `);
+  m.on('click', ()=>{ setReviewStation(s.id); });
+  stationMarkers[s.id]=m;
+});
+
+let userMarker=null, pathLine=null, lastRanked=null;
+
+function navigateTo(lat,lng){
+  const origin = window.__userPos ? `&origin=${window.__userPos.lat},${window.__userPos.lng}` : '';
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${origin}&travelmode=driving`, '_blank');
+}
+
+/* ===================== LOCATE + RESULTS ===================== */
+const statusBar = document.getElementById('statusBar');
+function setStatus(msg, kind){ statusBar.textContent = msg; statusBar.className = 'status show' + (kind?(' '+kind):''); }
+
+document.getElementById('locateBtn').addEventListener('click', ()=>{\n  if(!navigator.geolocation){ setStatus('เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง', 'warn'); return; }\n  const btn = document.getElementById('locateBtn');\n  btn.disabled = true;\n  setStatus('กำลังขอตำแหน่งของคุณ...');\n  navigator.geolocation.getCurrentPosition(\n    pos=>{ btn.disabled=false; const userPos = {lat:pos.coords.latitude, lng:pos.coords.longitude}; window.__userPos = userPos; onLocated(userPos); },\n    err=>{ btn.disabled=false; setStatus('ไม่สามารถระบุตำแหน่งได้ ระบบจะใช้จุดศูนย์กลางเมืองนครสวรรค์แทน', 'warn'); onLocated({lat:15.7047, lng:100.1372}); },\n    {enableHighAccuracy:true, timeout:8000}\n  );\n});
+
+function onLocated(userPos){\n  setStatus('พบตำแหน่งของคุณแล้ว กำลังคำนวณเส้นทางด้วย Dijkstra...', 'ok');\n\n  if(userMarker) map.removeLayer(userMarker);\n  userMarker = L.marker([userPos.lat, userPos.lng], {\n    icon: L.divIcon({className:'', html:'<div style="width:18px;height:18px;border-radius:50%;background:#0e1517;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);"></div>', iconSize:[18,18], iconAnchor:[9,9]})\n  }).addTo(map).bindPopup('ตำแหน่งของคุณ');\n\n  const adj = buildGraph(userPos);\n  const {dist, prev} = dijkstra(adj, 'USER');\n  const ranked = STATIONS.map(s=>({station:s, distance:dist[s.id]})).sort((a,b)=>a.distance-b.distance);\n  lastRanked = ranked;\n\n  document.getElementById('results').style.display='block';\n  renderResultCards(ranked, prev, userPos);\n  renderRankList(ranked);\n  renderTableDistances(ranked);\n  drawShortestPath(prev, ranked[0].station.id, userPos);\n  populateReviewSelect();\n  setReviewStation(ranked[0].station.id);\n\n  const bounds = L.latLngBounds([[userPos.lat,userPos.lng], [ranked[0].station.lat, ranked[0].station.lng]]);\n  map.fitBounds(bounds, {padding:[60,60]});\n\n  setStatus(`สถานีที่ใกล้ที่สุดคือ "${ranked[0].station.name}" ระยะทางตามเส้นทาง ${ranked[0].distance.toFixed(2)} กม.`, 'ok');\n  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});\n}
+
+function drawShortestPath(prev, targetId, userPos){\n  if(pathLine) map.removeLayer(pathLine);\n  const nodePath = reconstructPath(prev, targetId);\n  const latlngs = nodePath.map(n => { const c = coordOf(n, userPos); return [c.lat, c.lng]; });\n  pathLine = L.polyline(latlngs, {color:'#0e9c8f', weight:4, dashArray:'8 6'}).addTo(map);\n}
+
+function amenityTags(list){ return list.map(a=>`<span class="tag">${a}</span>`).join(''); }
+
+function nameOfNode(nodeId){\n  if(nodeId==='USER') return 'ตำแหน่งของคุณ';\n  const st = STATIONS.find(s=>s.id===nodeId);\n  return st ? st.name : nodeId;\n}
+
+function pathBreakdown(prev, targetId, userPos){\n  const nodePath = reconstructPath(prev, targetId);\n  const hops = [];\n  for(let i=0;i<nodePath.length-1;i++){\n    const a = coordOf(nodePath[i], userPos);\n    const b = coordOf(nodePath[i+1], userPos);\n    hops.push({ fromId:nodePath[i], toId:nodePath[i+1], dist:haversine(a,b) });\n  }\n  return { nodePath, hops };\n}
+
+function pathTraceHTML(prev, targetId, userPos){\n  const { nodePath, hops } = pathBreakdown(prev, targetId, userPos);\n  const stepsHTML = nodePath.map((nodeId, i)=>{\n    const label = `<span class="path-node${i===nodePath.length-1?' end':''}">${nameOfNode(nodeId)}</span>`;\n    if(i===0) return label;\n    return `<span class="path-hop">→ <span class="path-hop-dist">${hops[i-1].dist.toFixed(2)} กม.</span> →</span>${label}`;\n  }).join('');\n  return `\n    <div class="path-trace">\n      <div class="path-trace-label">🧭 เส้นทางกราฟที่ Dijkstra เลือก (${nodePath.length-1} ช่วง)</div>\n      <div class="path-trace-steps">${stepsHTML}</div>\n    </div>\n  `;\n}
+
+function renderResultCards(ranked, prev, userPos){\n  const wrap = document.getElementById('resultCards');\n  const primary = ranked[0], alt = ranked[1];\n  wrap.innerHTML = `\n    <div class="rcard primary" data-id="${primary.station.id}">\n      <div class="rcard-tag">⭐ สถานีหลักที่ใกล้ที่สุด (Primary)</div>\n      <h3>${primary.station.name}</h3>\n      <div class="rcard-row">📍 <span><b>ระยะทางตามเส้นทาง:</b> ${primary.distance.toFixed(2)} กม.</span></div>\n      <div class="rcard-row">🔌 <span><b>ทรัพยากร:</b> ${primary.station.chargers} ช่องชาร์จ | กระแสตรง (${primary.station.type} Fast Charge ${primary.station.power} kW)</span></div>\n      <div class="rcard-tags">${amenityTags(primary.station.amenities)}</div>\n      <div class="rcard-score">📋 คะแนนระบบ: <b>${primary.station.sysRating.toFixed(1)} / 5.0</b></div>\n      ${pathTraceHTML(prev, primary.station.id, userPos)}\n      <div style="margin-top:14px;"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); navigateTo(${primary.station.lat},${primary.station.lng})">นำทางด้วย GPS</button></div>\n    </div>\n    <div class="rcard alt" data-id="${alt.station.id}">\n      <div class="rcard-tag">🛡️ สถานีสำรองแนะนำ (Alternative)</div>\n      <h3>${alt.station.name}</h3>\n      <div class="rcard-row">📍 <span><b>ระยะทางถัดไป:</b> ${alt.distance.toFixed(2)} กม. (กรณีสถานีหลักไม่ว่าง)</span></div>\n      <div class="rcard-row">🔌 <span><b>ทรัพยากร:</b> ${alt.station.chargers} ช่องชาร์จ | กระแสตรง (${alt.station.type} Fast Charge ${alt.station.power} kW)</span></div>\n      <div class="rcard-tags">${amenityTags(alt.station.amenities)}</div>\n      <div class="rcard-score">📋 คะแนนระบบ: <b>${alt.station.sysRating.toFixed(1)} / 5.0</b></div>\n      ${pathTraceHTML(prev, alt.station.id, userPos)}\n      <div style="margin-top:14px;"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); navigateTo(${alt.station.lat},${alt.station.lng})">นำทางด้วย GPS</button></div>\n    </div>\n  `;\n  wrap.querySelectorAll('.rcard').forEach(card=>{\n    card.addEventListener('click', ()=>{\n      const id = card.dataset.id;\n      stationMarkers[id].openPopup();\n      map.panTo([STATIONS.find(s=>s.id===id).lat, STATIONS.find(s=>s.id===id).lng]);\n      setReviewStation(id);\n    });\n  });\n}
+
+function renderRankList(ranked){\n  const list = document.getElementById('rankList');\n  list.innerHTML='';\n  ranked.slice(2).forEach((r,i)=>{\n    const el = document.createElement('div');\n    el.className = 'rank-item';\n    el.innerHTML = `\n      <div class="rank-num">${i+3}</div>\n      <div>\n        <div class="rank-name">${r.station.name}</div>\n        <div class="rank-meta">${r.station.chargers} หัวชาร์จ · ${r.station.type} ${r.station.power} kW</div>\n      </div>\n      <div class="rank-dist">${r.distance.toFixed(2)} กม.</div>\n    `;\n    el.addEventListener('click', ()=>{\n      stationMarkers[r.station.id].openPopup();\n      map.panTo([r.station.lat, r.station.lng]);\n      setReviewStation(r.station.id);\n    });\n    list.appendChild(el);\n  });\n}\ndocument.getElementById('toggleMoreBtn').addEventListener('click', function(){\n  const list = document.getElementById('rankList');\n  const show = list.style.display === 'none';\n  list.style.display = show ? 'grid' : 'none';\n  this.textContent = show ? 'ซ่อนสถานีอื่นที่ใกล้เคียง' : 'ดูสถานีอื่นที่ใกล้เคียง';\n});
+
+function renderTableDistances(ranked){\n  const map2 = {};\n  ranked.forEach(r=> map2[r.station.id]=r.distance);\n  STATIONS.forEach(s=>{\n    const cell = document.getElementById('dist-'+s.id);\n    if(cell) cell.textContent = map2[s.id]!==undefined ? map2[s.id].toFixed(2)+' กม.' : '—';\n  });\n}
+
+/* ===================== STAR ICON ===================== */
+function starSVG(filled){\n  return `<svg viewBox="0 0 24 24" fill="${filled?'#f5a623':'none'}" stroke="${filled?'#f5a623':'#c7d0d1'}" stroke-width="1.5"><path d="M12 2.5l2.9 6.1 6.6.7-4.9 4.5 1.3 6.6L12 17.1l-5.9 3.3 1.3-6.6-4.9-4.5 6.6-.7L12 2.5Z"/></svg>`;\n}
+
+/* ===================== RATINGS (via window.storage / fallback) ===================== */
+const _localBackup = {};
+async function getRatingState(id){\n  try{\n    if (window.storage && typeof window.storage.get === 'function') {\n      const res = await window.storage.get('rating:'+id, true);\n      return res ? JSON.parse(res.value) : {sum:0, count:0};\n    }\n    return _localBackup['rating:'+id] || {sum:0, count:0};\n  } catch(e){ return {sum:0, count:0}; }\n}\nasync function submitRating(id, value){\n  const state = await getRatingState(id);\n  state.sum += value; state.count += 1;\n  try{\n    if (window.storage && typeof window.storage.set === 'function') {\n      await window.storage.set('rating:'+id, JSON.stringify(state), true);\n    } else {\n      _localBackup['rating:'+id] = state;\n    }\n  }catch(e){}\n  return state;\n}
+
+/* ===================== REVIEWS (via window.storage / fallback) ===================== */
+async function getReviews(id){\n  try{\n    if (window.storage && typeof window.storage.get === 'function') {\n      const res = await window.storage.get('reviews:'+id, true);\n      return res ? JSON.parse(res.value) : [];\n    }\n    return _localBackup['reviews:'+id] || [];\n  } catch(e){ return []; }\n}\nasync function addReview(id, entry){\n  const list = await getReviews(id);\n  list.unshift(entry);\n  const trimmed = list.slice(0,50);\n  try{\n    if (window.storage && typeof window.storage.set === 'function') {\n      await window.storage.set('reviews:'+id, JSON.stringify(trimmed), true);\n    } else {\n      _localBackup['reviews:'+id] = trimmed;\n    }\n  }catch(e){}\n  return trimmed;\n}\nfunction populateReviewSelect(){\n  const sel = document.getElementById('reviewStation');\n  sel.innerHTML = STATIONS.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');\n}\nasync function setReviewStation(id){\n  document.getElementById('reviewStation').value = id;\n  await renderReviewList(id);\n}\nasync function renderReviewList(id){\n  const listEl = document.getElementById('reviewList');\n  const reviews = await getReviews(id);\n  if(reviews.length===0){\n    listEl.innerHTML = `<div class="review-empty">ยังไม่มีความคิดเห็นสำหรับสถานีนี้ — เป็นคนแรกที่รีวิว!</div>`;\n    return;\n  }\n  listEl.innerHTML = reviews.map(r=>`\n    <div class="review-item">\n      <div class="rh"><span class="rname">${r.name}</span><span class="rstars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span></div>\n      <div class="rtext">${r.comment}</div>\n    </div>\n  `).join('');\n}\ndocument.getElementById('reviewStation').addEventListener('change', (e)=> renderReviewList(e.target.value));\n\ndocument.getElementById('submitReview').addEventListener('click', async () => {\n  const id = document.getElementById('reviewStation').value;\n  const name = document.getElementById('reviewName').value.trim() || 'ผู้ใช้ไม่ระบุชื่อ';\n  const stars = parseInt(document.getElementById('reviewStars').value, 10);\n  const comment = document.getElementById('reviewText').value.trim();\n  if(!comment){ document.getElementById('reviewText').focus(); return; }\n  const btn = document.getElementById('submitReview');\n  btn.disabled = true; btn.textContent='กำลังบันทึก...';\n  await addReview(id, {name, rating:stars, comment, ts:Date.now()});\n  await submitRating(id, stars);\n  await renderReviewList(id);\n  document.getElementById('reviewText').value='';\n  btn.disabled = false; btn.textContent='ส่งความคิดเห็น';\n});
+
+/* ===================== TABLE RENDER ===================== */
+const tbody = document.getElementById('stationTbody');
+STATIONS.forEach(s=>{\n  const tr = document.createElement('tr');\n  tr.innerHTML = `\n    <td><div class="st-name">${s.name}</div><div class="st-sub">${s.area}</div></td>\n    <td>${s.chargers} หัว</td>\n    <td><span class="power-pill">⚡ ${s.type} ${s.power} kW</span></td>\n    <td><div class="amenity-tags">${amenityTags(s.amenities)}</div></td>\n    <td>\n      <div class="rating-row"><span class="rating-label">ระบบ</span><span class="rating-num">${s.sysRating.toFixed(1)} ★</span></div>\n      <div class="rating-row">\n        <span class="rating-label">ผู้ใช้</span>\n        <span class="stars-input" data-id="${s.id}">${[1,2,3,4,5].map(()=>starSVG(false)).join('')}</span>\n        <span class="rating-num" id="avg-${s.id}">—</span>\n      </div>\n    </td>\n    <td class="dist-cell" id="dist-${s.id}">—</td>\n    <td><button class="btn btn-outline btn-sm" onclick="navigateTo(${s.lat},${s.lng})">นำทาง</button></td>\n  `;\n  tbody.appendChild(tr);\n});\n\ndocument.querySelectorAll('.stars-input').forEach(starEl=>{\n  const id = starEl.dataset.id;\n  const stars = starEl.querySelectorAll('svg');\n  stars.forEach((svg, idx)=>{\n    svg.style.cursor='pointer';\n    svg.addEventListener('mouseenter', ()=> paintStars(stars, idx+1));\n    svg.addEventListener('mouseleave', ()=> paintStars(stars, 0));\n    svg.addEventListener('click', async ()=>{\n      const state = await submitRating(id, idx+1);\n      updateAvgDisplay(id, state);\n      paintStars(stars, 0);\n      setReviewStation(id);\n      document.getElementById('reviewStars').value = String(idx+1);\n    });\n  });\n  refreshAvg(id);\n});\nfunction paintStars(stars, count){\n  stars.forEach((svg,i)=>{\n    if(count>0){ svg.setAttribute('fill', i<count ? '#f5a623' : 'none'); svg.setAttribute('stroke', i<count ? '#f5a623' : '#c7d0d1'); }\n  });\n}\nfunction updateAvgDisplay(id, state){\n  const el = document.getElementById('avg-'+id);\n  if(!el) return;\n  el.textContent = state.count>0 ? `${(state.sum/state.count).toFixed(1)} ★ (${state.count})` : 'ยังไม่มีคะแนน';\n}\nasync function refreshAvg(id){ const state = await getRatingState(id); updateAvgDisplay(id, state); }
+
+/* ===================== DISTANCE MATRIX TABLE ===================== */
+(function renderMatrix(){\n  const m = buildMatrix();\n  const table = document.getElementById('matrixTable');\n  let html = '<tr><th></th>' + STATIONS.map(s=>`<th>${s.id}</th>`).join('') + '</tr>';\n  STATIONS.forEach((row,i)=>{\n    html += `<tr><th>${row.id}</th>` + STATIONS.map((col,j)=> i===j ? `<td class="diag">0.00</td>` : `<td>${m[i][j].toFixed(2)}</td>`).join('') + '</tr>';\n  });\n  table.innerHTML = html;\n})();
+
+populateReviewSelect();
+renderReviewList(STATIONS[0].id);
+</script>
 </body>
 </html>
-
